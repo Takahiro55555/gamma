@@ -2,7 +2,7 @@ package lookuptable_test
 
 import (
 	"fmt"
-	"gateway/lookuptable"
+	"gateway/pkg/lookuptable"
 	"reflect"
 	"testing"
 )

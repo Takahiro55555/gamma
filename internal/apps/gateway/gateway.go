@@ -1,8 +1,8 @@
-package main
+package gateway
 
 import (
 	"fmt"
-	"gateway/lookuptable"
+	"gateway/pkg/lookuptable"
 	"log"
 	"os"
 	"os/signal"
@@ -11,13 +11,13 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
-func main() {
+func Gateway() {
 	rootNode := &lookuptable.Node{}
 	lookuptable.UpdateHost(rootNode, "/", "127.0.0.1", 5000)
-	lookuptable.UpdateHost(rootNode, "/0", "127.0.0.1", 5001)
-	lookuptable.UpdateHost(rootNode, "/1", "127.0.0.1", 5002)
-	lookuptable.UpdateHost(rootNode, "/2", "127.0.0.1", 5003)
-	lookuptable.UpdateHost(rootNode, "/3", "127.0.0.1", 5004)
+	// lookuptable.UpdateHost(rootNode, "/0", "127.0.0.1", 5001)
+	// lookuptable.UpdateHost(rootNode, "/1", "127.0.0.1", 5002)
+	// lookuptable.UpdateHost(rootNode, "/2", "127.0.0.1", 5003)
+	// lookuptable.UpdateHost(rootNode, "/3", "127.0.0.1", 5004)
 
 	gatewayBroker := "tcp://127.0.0.1:1883"
 	msgCh := make(chan mqtt.Message)
@@ -32,7 +32,7 @@ func main() {
 		log.Fatalf("Mqtt error: %s", token.Error())
 	}
 
-	if subscribeToken := c.Subscribe("/#", 0, f); subscribeToken.Wait() && subscribeToken.Error() != nil {
+	if subscribeToken := c.Subscribe("/api/#", 0, f); subscribeToken.Wait() && subscribeToken.Error() != nil {
 		log.Fatal(subscribeToken.Error())
 	}
 
