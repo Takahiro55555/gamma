@@ -1,6 +1,8 @@
 ---
 name: リファクタリング
 about: リファクタリングに関することを記述する
+labels:
+- refactor
 
 ---
 
