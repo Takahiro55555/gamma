@@ -4,6 +4,6 @@ import (
 	"testing"
 )
 
-func TestGateWay(t *testing.T) {
-	t.Skip("skip main...")
+func TestGateway(t *testing.T) {
+	t.Skip("skip gateway...")
 }
