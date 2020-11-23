@@ -40,12 +40,12 @@ func UpdateHost(root *Node, topic string, host string, port uint16) error {
 		rep := regexp.MustCompile(`^/`)
 		topicSlice := strings.Split(rep.ReplaceAllString(topic, ""), "/")
 		for _, child := range topicSlice {
-			// if currentNode.Host == "" {
-			// 	currentNode.Host = host
-			// }
-			// if currentNode.Port == 0 {
-			// 	currentNode.Port = port
-			// }
+			if currentNode.Host == "" {
+				currentNode.Host = host
+			}
+			if currentNode.Port == 0 {
+				currentNode.Port = port
+			}
 			// NOTE: 初期化されていない map の場合、初期化を実行する
 			if currentNode.Children == nil {
 				currentNode.Children = map[string]*Node{}
