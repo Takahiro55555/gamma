@@ -263,6 +263,46 @@ func TestUpdateHost(t *testing.T) {
 			err: nil,
 		},
 		{
+			name: "Success basic 06 (update node)",
+			args: args{node: &lookuptable.Node{
+				Children: map[string]*lookuptable.Node{
+					"0": {
+						Children: map[string]*lookuptable.Node{},
+						Host:     "localhost",
+						Port:     5000,
+					},
+					"1": {
+						Children: map[string]*lookuptable.Node{},
+						Host:     "localhost",
+						Port:     5001,
+					},
+				},
+				Host: "localhost",
+				Port: 5000,
+			},
+				topic: "/0",
+				host:  "127.0.0.1",
+				port:  5002,
+			},
+			want: &lookuptable.Node{
+				Children: map[string]*lookuptable.Node{
+					"0": {
+						Children: map[string]*lookuptable.Node{},
+						Host:     "127.0.0.1",
+						Port:     5002,
+					},
+					"1": {
+						Children: map[string]*lookuptable.Node{},
+						Host:     "localhost",
+						Port:     5001,
+					},
+				},
+				Host: "localhost",
+				Port: 5000,
+			},
+			err: nil,
+		},
+		{
 			name: "Topic name error 01 (boundary value)",
 			args: args{node: &lookuptable.Node{}, topic: "/1234567890/0/1/2/3/4", host: "127.0.0.1", port: 5000},
 			want: &lookuptable.Node{},
@@ -321,6 +361,12 @@ func TestUpdateHost(t *testing.T) {
 			args: args{node: &lookuptable.Node{}, topic: "/1234567890/0/1/2/3//", host: "127.0.0.1", port: 5000},
 			want: &lookuptable.Node{},
 			err:  lookuptable.TopicNameError{},
+		},
+		{
+			name: "Topic name error 01 (not allowed format)",
+			args: args{node: &lookuptable.Node{}, topic: "/1234567890/0/1/2/3", host: "256.0.0.1", port: 5000},
+			want: &lookuptable.Node{},
+			err:  lookuptable.HostError{},
 		},
 	}
 	for _, tt := range tests {
