@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sort"
 )
 
 func LookupHost(root *Node, topic string) (string, uint16, error) {
@@ -107,7 +108,12 @@ func (n Node) String() string {
 	// HACK: 文字列生成処理の部分があまり効率の良くない実装になっている
 	result := fmt.Sprintf("{\"host\":\"%v\",\"port\":%v,\"children\":{", n.Host, n.Port)
 	counter := 1
-	for key, val := range n.Children {
+
+	// NOTE: go の map は range でイテレーションすると、実行するたびに順序が入れ替わるためキーをソートしている
+	childrenKey := keys(n.Children)
+	sort.Strings(childrenKey)
+	for _, key := range childrenKey {
+		val := n.Children[key]
 		if counter != len(n.Children) {
 			result += fmt.Sprintf("\"%v\":%v,", key, val)
 		} else {
@@ -117,6 +123,14 @@ func (n Node) String() string {
 	}
 	result += "}}"
 	return result
+}
+
+func keys(m map[string]*Node) []string {
+	ks := []string{}
+	for k, _ := range m {
+		ks = append(ks, k)
+	}
+	return ks
 }
 
 /** エラー構造体 **/

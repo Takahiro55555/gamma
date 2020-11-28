@@ -390,3 +390,49 @@ func TestUpdateHost(t *testing.T) {
 		})
 	}
 }
+
+// NOTE: go の map は range でイテレーションすると、実行するたびに順序が入れ替わる
+//       Node 構造体を文字列に変換する関数がきちんとのことを考慮しているか確認するためのテスト
+func TestString(t *testing.T) {
+	type args struct {
+		node  *lookuptable.Node
+	}
+	tests := []struct {
+		name string
+		args args
+		time int  // 試行回数
+	}{
+		{
+			name: "Success 01",
+			args: args{
+				node: &lookuptable.Node{
+					Children: map[string]*lookuptable.Node{
+						"0": {
+							Children: map[string]*lookuptable.Node{},
+							Host:     "localhost",
+							Port:     5000,
+						},
+						"1": {
+							Children: map[string]*lookuptable.Node{},
+							Host:     "localhost",
+							Port:     5001,
+						},
+					},
+					Host: "localhost",
+					Port: 5000,
+				},
+			},
+			time: 1000,
+		},
+	}
+	for _, tt := range tests {
+		want := fmt.Sprint(tt.args.node)
+		for i:=0; i < tt.time; i++ {
+			t.Run(tt.name, func(t *testing.T) {
+				if fmt.Sprint(tt.args.node) != want {
+					t.Errorf("UpdateHost(); node = %v, expected %v", tt.args.node, want)
+				}
+			})
+		}
+	}
+}
