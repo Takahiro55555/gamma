@@ -3,8 +3,8 @@ package lookuptable
 import (
 	"fmt"
 	"regexp"
-	"strings"
 	"sort"
+	"strings"
 )
 
 func LookupHost(root *Node, topic string) (string, uint16, error) {
@@ -73,7 +73,7 @@ func validateTopic(topic string) error {
 	if rTopic.MatchString(topic) {
 		return nil
 	}
-	return TopicNameError{Msg: "Invalid topic name. Allowed topic name`s regular expressions is '^/[0-9]+(/[0-3])*$' ."}
+	return TopicNameError{Msg: "Invalid topic name. Allowed topic name`s regular expressions is '^/([0-9]+(/[0-3])*)?$' ."}
 }
 
 func validateHost(host string) error {
