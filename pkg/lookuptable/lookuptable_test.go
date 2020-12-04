@@ -427,12 +427,17 @@ func TestString(t *testing.T) {
 	}
 	for _, tt := range tests {
 		want := fmt.Sprint(tt.args.node)
+		isFailed := false
 		for i:=0; i < tt.time; i++ {
 			t.Run(tt.name, func(t *testing.T) {
 				if fmt.Sprint(tt.args.node) != want {
 					t.Errorf("UpdateHost(); node = %v, expected %v", tt.args.node, want)
+					isFailed = true
 				}
 			})
+			if isFailed {
+				break
+			}
 		}
 	}
 }
