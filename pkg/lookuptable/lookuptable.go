@@ -1,3 +1,6 @@
+/*
+TODO: package名を topictable に変更したほうが良いかも。
+*/
 package lookuptable
 
 import (
