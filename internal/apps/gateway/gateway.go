@@ -3,7 +3,7 @@ package gateway
 import (
 	"fmt"
 	"gateway/pkg/brokerpool"
-	"gateway/pkg/lookuptable"
+	"gateway/pkg/brokertable"
 	"log"
 	"os"
 	"os/signal"
@@ -56,12 +56,12 @@ func Gateway() {
 	apiForwardMsgCh := make(chan mqtt.Message)
 
 	// 分散ブローカ接続情報管理オブジェクト
-	rootNode := &lookuptable.Node{}
-	lookuptable.UpdateHost(rootNode, "/", "localhost", 1893)
-	lookuptable.UpdateHost(rootNode, "/0", "localhost", 1894)
-	lookuptable.UpdateHost(rootNode, "/1", "localhost", 1895)
-	lookuptable.UpdateHost(rootNode, "/2", "localhost", 1896)
-	lookuptable.UpdateHost(rootNode, "/3", "localhost", 1897)
+	rootNode := &brokertable.Node{}
+	brokertable.UpdateHost(rootNode, "/", "localhost", 1893)
+	brokertable.UpdateHost(rootNode, "/0", "localhost", 1894)
+	brokertable.UpdateHost(rootNode, "/1", "localhost", 1895)
+	brokertable.UpdateHost(rootNode, "/2", "localhost", 1896)
+	brokertable.UpdateHost(rootNode, "/3", "localhost", 1897)
 
 	bp := brokerpool.NewBrokerPool()
 	_ = bp
