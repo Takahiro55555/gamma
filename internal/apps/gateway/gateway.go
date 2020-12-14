@@ -2,67 +2,81 @@ package gateway
 
 import (
 	"fmt"
+	"gateway/pkg/brokerpool"
 	"gateway/pkg/lookuptable"
 	"log"
 	"os"
 	"os/signal"
-	"regexp"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 func Gateway() {
-	rootNode := &lookuptable.Node{}
-	lookuptable.UpdateHost(rootNode, "/", "127.0.0.1", 5000)
-	// lookuptable.UpdateHost(rootNode, "/0", "127.0.0.1", 5001)
-	// lookuptable.UpdateHost(rootNode, "/1", "127.0.0.1", 5002)
-	// lookuptable.UpdateHost(rootNode, "/2", "127.0.0.1", 5003)
-	// lookuptable.UpdateHost(rootNode, "/3", "127.0.0.1", 5004)
-
+	////// ゲートウェイブローカへ接続するための準備 //////
 	gatewayBroker := "tcp://127.0.0.1:1883"
-	msgCh := make(chan mqtt.Message)
-	var f mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
-		msgCh <- msg
-	}
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(gatewayBroker)
-	c := mqtt.NewClient(opts)
 
-	if token := c.Connect(); token.Wait() && token.Error() != nil {
+	// ゲートウェイブローカへ接続
+	gatewayClient := mqtt.NewClient(opts)
+	if token := gatewayClient.Connect(); token.Wait() && token.Error() != nil {
 		log.Fatalf("Mqtt error: %s", token.Error())
+		return
 	}
 
-	if subscribeToken := c.Subscribe("/api/#", 0, f); subscribeToken.Wait() && subscribeToken.Error() != nil {
+	////// メッセージハンドラの作成・登録 //////
+
+	// Subscribe するトピックをリクエストするトピック
+	apiRegisterMsgCh := make(chan mqtt.Message)
+	var fRegisterMsg mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
+		apiRegisterMsgCh <- msg
+	}
+	if subscribeToken := gatewayClient.Subscribe("/api/register", 0, fRegisterMsg); subscribeToken.Wait() && subscribeToken.Error() != nil {
 		log.Fatal(subscribeToken.Error())
+		return
 	}
 
+	// Subscribe 解除するためのトピック
+	apiUnregisterMsgCh := make(chan mqtt.Message)
+	var fUnregisterMsg mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
+		apiUnregisterMsgCh <- msg
+	}
+	if subscribeToken := gatewayClient.Subscribe("/api/register", 0, fUnregisterMsg); subscribeToken.Wait() && subscribeToken.Error() != nil {
+		log.Fatal(subscribeToken.Error())
+		return
+	}
+
+	// プルグラムを強制終了させるためのチャンネル
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, os.Interrupt)
 
-	rApiRegister := regexp.MustCompile(`^/api/register$`)
-	rApiUnregister := regexp.MustCompile(`^/api/unregister$`)
-	rForward := regexp.MustCompile(`^/forward(/[0-3])+$`)
+	////// 分散ブローカに関する情報を管理するオブジェクト //////
+
+	// ゲートウェイブローカへ転送するメッセージ用チャンネル
+	apiForwardMsgCh := make(chan mqtt.Message)
+
+	// 分散ブローカ接続情報管理オブジェクト
+	rootNode := &lookuptable.Node{}
+	lookuptable.UpdateHost(rootNode, "/", "localhost", 1893)
+	lookuptable.UpdateHost(rootNode, "/0", "localhost", 1894)
+	lookuptable.UpdateHost(rootNode, "/1", "localhost", 1895)
+	lookuptable.UpdateHost(rootNode, "/2", "localhost", 1896)
+	lookuptable.UpdateHost(rootNode, "/3", "localhost", 1897)
+
+	bp := brokerpool.NewBrokerPool()
+	_ = bp
+	_ = apiForwardMsgCh
 	for {
 		select {
-		case m := <-msgCh:
+		case m := <-apiRegisterMsgCh:
 			fmt.Printf("topic: %v, payload: %v\n", m.Topic(), string(m.Payload()))
-			// TODO: 作業ここから
-			// 受信したメッセージをトピック名から、制御用メッセージと転送用メッセージに分ける。
-			// その後、それぞれの処理を行う
-			switch {
-			case rForward.MatchString(m.Topic()):
-				return
-			case rApiRegister.MatchString(m.Topic()):
-				return
-			case rApiUnregister.MatchString(m.Topic()):
-				return
-			default:
-				return
-			}
+
+		case m := <-apiUnregisterMsgCh:
+			fmt.Printf("topic: %v, payload: %v\n", m.Topic(), string(m.Payload()))
 
 		case <-signalCh:
 			fmt.Printf("Interrupt detected.\n")
-			c.Disconnect(1000)
+			gatewayClient.Disconnect(1000)
 			return
 		}
 	}
