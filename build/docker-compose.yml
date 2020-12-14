@@ -1,0 +1,58 @@
+version: "3.3"
+
+services: 
+  gateway-broker-00:
+    image: eclipse-mosquitto:1.6
+    container_name: "gateway-broker-00"
+    ports: 
+      - 1883:1883
+      - 9001:9001
+
+  gateway-broker-01:
+    image: eclipse-mosquitto:1.6
+    container_name: "gateway-broker-01"
+    ports: 
+      - 1884:1883
+      - 9002:9001
+
+  distributed-broker-00:
+    image: eclipse-mosquitto:1.6
+    container_name: "distributed-broker-00"
+    ports: 
+      - 1893:1883
+      - 9011:9001
+
+  distributed-broker-01:
+    image: eclipse-mosquitto:1.6
+    container_name: "distributed-broker-01"
+    ports: 
+      - 1894:1883
+      - 9012:9001
+
+  distributed-broker-02:
+    image: eclipse-mosquitto:1.6
+    container_name: "distributed-broker-02"
+    ports: 
+      - 1895:1883
+      - 9013:9001
+
+  distributed-broker-03:
+    image: eclipse-mosquitto:1.6
+    container_name: "distributed-broker-03"
+    ports: 
+      - 1896:1883
+      - 9014:9001
+
+  distributed-broker-04:
+    image: eclipse-mosquitto:1.6
+    container_name: "distributed-broker-04"
+    ports: 
+      - 1897:1883
+      - 9015:9001
+
+  distributed-broker-05:
+    image: eclipse-mosquitto:1.6
+    container_name: "distributed-broker-05"
+    ports: 
+      - 1898:1883
+      - 9016:9001
