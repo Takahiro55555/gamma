@@ -1,7 +1,4 @@
-/*
-TODO: package名を brokertable に変更したほうが良いかも。
-*/
-package lookuptable
+package brokertable
 
 import (
 	"fmt"

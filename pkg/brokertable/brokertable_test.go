@@ -1,15 +1,15 @@
-package lookuptable_test
+package brokertable_test
 
 import (
 	"fmt"
-	"gateway/pkg/lookuptable"
+	"gateway/pkg/brokertable"
 	"reflect"
 	"testing"
 )
 
 func TestLookupHost(t *testing.T) {
 	type args struct {
-		node  *lookuptable.Node
+		node  *brokertable.Node
 		topic string
 	}
 	type want struct {
@@ -25,8 +25,8 @@ func TestLookupHost(t *testing.T) {
 		{
 			name: "Success basic 01",
 			args: args{
-				node: &lookuptable.Node{
-					Children: map[string]*lookuptable.Node{},
+				node: &brokertable.Node{
+					Children: map[string]*brokertable.Node{},
 					Host:     "127.0.0.1",
 					Port:     5000,
 				},
@@ -41,14 +41,14 @@ func TestLookupHost(t *testing.T) {
 		{
 			name: "Success basic 02",
 			args: args{
-				node: &lookuptable.Node{
-					Children: map[string]*lookuptable.Node{
+				node: &brokertable.Node{
+					Children: map[string]*brokertable.Node{
 						"0": {
-							Children: map[string]*lookuptable.Node{
+							Children: map[string]*brokertable.Node{
 								"1": {
-									Children: map[string]*lookuptable.Node{
+									Children: map[string]*brokertable.Node{
 										"2": {
-											Children: map[string]*lookuptable.Node{},
+											Children: map[string]*brokertable.Node{},
 											Host:     "localhost",
 											Port:     5003,
 										},
@@ -75,14 +75,14 @@ func TestLookupHost(t *testing.T) {
 		{
 			name: "Success basic 03",
 			args: args{
-				node: &lookuptable.Node{
-					Children: map[string]*lookuptable.Node{
+				node: &brokertable.Node{
+					Children: map[string]*brokertable.Node{
 						"0": {
-							Children: map[string]*lookuptable.Node{
+							Children: map[string]*brokertable.Node{
 								"1": {
-									Children: map[string]*lookuptable.Node{
+									Children: map[string]*brokertable.Node{
 										"2": {
-											Children: map[string]*lookuptable.Node{},
+											Children: map[string]*brokertable.Node{},
 											Host:     "localhost",
 											Port:     5003,
 										},
@@ -109,8 +109,8 @@ func TestLookupHost(t *testing.T) {
 		{
 			name: "Invalid topic 01",
 			args: args{
-				node: &lookuptable.Node{
-					Children: map[string]*lookuptable.Node{},
+				node: &brokertable.Node{
+					Children: map[string]*brokertable.Node{},
 					Host:     "example.com",
 					Port:     5000,
 				},
@@ -119,13 +119,13 @@ func TestLookupHost(t *testing.T) {
 			want: want{
 				host: "example.com",
 				port: 5000,
-				err:  lookuptable.TopicNameError{},
+				err:  brokertable.TopicNameError{},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			host, port, err := lookuptable.LookupHost(tt.args.node, tt.args.topic)
+			host, port, err := brokertable.LookupHost(tt.args.node, tt.args.topic)
 			if tt.want.err == nil {
 				/** エラーを期待しないテストケース **/
 				if err != tt.want.err {
@@ -151,7 +151,7 @@ func TestLookupHost(t *testing.T) {
 
 func TestUpdateHost(t *testing.T) {
 	type args struct {
-		node  *lookuptable.Node
+		node  *brokertable.Node
 		topic string
 		host  string
 		port  uint16
@@ -159,14 +159,14 @@ func TestUpdateHost(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want *lookuptable.Node
+		want *brokertable.Node
 		err  error
 	}{
 		{
 			name: "Success basic 01",
-			args: args{node: &lookuptable.Node{}, topic: "/", host: "127.0.0.1", port: 5000},
-			want: &lookuptable.Node{
-				Children: map[string]*lookuptable.Node{},
+			args: args{node: &brokertable.Node{}, topic: "/", host: "127.0.0.1", port: 5000},
+			want: &brokertable.Node{
+				Children: map[string]*brokertable.Node{},
 				Host:     "127.0.0.1",
 				Port:     5000,
 			},
@@ -174,11 +174,11 @@ func TestUpdateHost(t *testing.T) {
 		},
 		{
 			name: "Success basic 02 (add node)",
-			args: args{node: &lookuptable.Node{}, topic: "/1234567890", host: "127.0.0.1", port: 5000},
-			want: &lookuptable.Node{
-				Children: map[string]*lookuptable.Node{
+			args: args{node: &brokertable.Node{}, topic: "/1234567890", host: "127.0.0.1", port: 5000},
+			want: &brokertable.Node{
+				Children: map[string]*brokertable.Node{
 					"1234567890": {
-						Children: map[string]*lookuptable.Node{},
+						Children: map[string]*brokertable.Node{},
 						Host:     "127.0.0.1",
 						Port:     5000,
 					},
@@ -190,13 +190,13 @@ func TestUpdateHost(t *testing.T) {
 		},
 		{
 			name: "Success basic 03 (add node)",
-			args: args{node: &lookuptable.Node{}, topic: "/1234567890/1", host: "127.0.0.1", port: 5000},
-			want: &lookuptable.Node{
-				Children: map[string]*lookuptable.Node{
+			args: args{node: &brokertable.Node{}, topic: "/1234567890/1", host: "127.0.0.1", port: 5000},
+			want: &brokertable.Node{
+				Children: map[string]*brokertable.Node{
 					"1234567890": {
-						Children: map[string]*lookuptable.Node{
+						Children: map[string]*brokertable.Node{
 							"1": {
-								Children: map[string]*lookuptable.Node{},
+								Children: map[string]*brokertable.Node{},
 								Host:     "127.0.0.1",
 								Port:     5000,
 							},
@@ -212,15 +212,15 @@ func TestUpdateHost(t *testing.T) {
 		},
 		{
 			name: "Success basic 04 (add node)",
-			args: args{node: &lookuptable.Node{}, topic: "/0/0/3", host: "localhost", port: 5000},
-			want: &lookuptable.Node{
-				Children: map[string]*lookuptable.Node{
+			args: args{node: &brokertable.Node{}, topic: "/0/0/3", host: "localhost", port: 5000},
+			want: &brokertable.Node{
+				Children: map[string]*brokertable.Node{
 					"0": {
-						Children: map[string]*lookuptable.Node{
+						Children: map[string]*brokertable.Node{
 							"0": {
-								Children: map[string]*lookuptable.Node{
+								Children: map[string]*brokertable.Node{
 									"3": {
-										Children: map[string]*lookuptable.Node{},
+										Children: map[string]*brokertable.Node{},
 										Host:     "localhost",
 										Port:     5000,
 									},
@@ -240,10 +240,10 @@ func TestUpdateHost(t *testing.T) {
 		},
 		{
 			name: "Success basic 05 (delete node)",
-			args: args{node: &lookuptable.Node{
-				Children: map[string]*lookuptable.Node{
+			args: args{node: &brokertable.Node{
+				Children: map[string]*brokertable.Node{
 					"0": {
-						Children: map[string]*lookuptable.Node{},
+						Children: map[string]*brokertable.Node{},
 						Host:     "localhost",
 						Port:     5000,
 					},
@@ -255,8 +255,8 @@ func TestUpdateHost(t *testing.T) {
 				host:  "localhost",
 				port:  5000,
 			},
-			want: &lookuptable.Node{
-				Children: map[string]*lookuptable.Node{},
+			want: &brokertable.Node{
+				Children: map[string]*brokertable.Node{},
 				Host:     "localhost",
 				Port:     5000,
 			},
@@ -264,15 +264,15 @@ func TestUpdateHost(t *testing.T) {
 		},
 		{
 			name: "Success basic 06 (update node)",
-			args: args{node: &lookuptable.Node{
-				Children: map[string]*lookuptable.Node{
+			args: args{node: &brokertable.Node{
+				Children: map[string]*brokertable.Node{
 					"0": {
-						Children: map[string]*lookuptable.Node{},
+						Children: map[string]*brokertable.Node{},
 						Host:     "localhost",
 						Port:     5000,
 					},
 					"1": {
-						Children: map[string]*lookuptable.Node{},
+						Children: map[string]*brokertable.Node{},
 						Host:     "localhost",
 						Port:     5001,
 					},
@@ -284,15 +284,15 @@ func TestUpdateHost(t *testing.T) {
 				host:  "127.0.0.1",
 				port:  5002,
 			},
-			want: &lookuptable.Node{
-				Children: map[string]*lookuptable.Node{
+			want: &brokertable.Node{
+				Children: map[string]*brokertable.Node{
 					"0": {
-						Children: map[string]*lookuptable.Node{},
+						Children: map[string]*brokertable.Node{},
 						Host:     "127.0.0.1",
 						Port:     5002,
 					},
 					"1": {
-						Children: map[string]*lookuptable.Node{},
+						Children: map[string]*brokertable.Node{},
 						Host:     "localhost",
 						Port:     5001,
 					},
@@ -304,74 +304,74 @@ func TestUpdateHost(t *testing.T) {
 		},
 		{
 			name: "Topic name error 01 (boundary value)",
-			args: args{node: &lookuptable.Node{}, topic: "/1234567890/0/1/2/3/4", host: "127.0.0.1", port: 5000},
-			want: &lookuptable.Node{},
-			err:  lookuptable.TopicNameError{},
+			args: args{node: &brokertable.Node{}, topic: "/1234567890/0/1/2/3/4", host: "127.0.0.1", port: 5000},
+			want: &brokertable.Node{},
+			err:  brokertable.TopicNameError{},
 		},
 		{
 			name: "Topic name error 02 (boundary value, not allowed charactor)",
-			args: args{node: &lookuptable.Node{}, topic: "/1234567890/0/1/2/-1", host: "127.0.0.1", port: 5000},
-			want: &lookuptable.Node{},
-			err:  lookuptable.TopicNameError{},
+			args: args{node: &brokertable.Node{}, topic: "/1234567890/0/1/2/-1", host: "127.0.0.1", port: 5000},
+			want: &brokertable.Node{},
+			err:  brokertable.TopicNameError{},
 		},
 		{
 			name: "Topic name error 03 (not allowed charactor)",
-			args: args{node: &lookuptable.Node{}, topic: "/1234567890/0/1/2/#", host: "127.0.0.1", port: 5000},
-			want: &lookuptable.Node{},
-			err:  lookuptable.TopicNameError{},
+			args: args{node: &brokertable.Node{}, topic: "/1234567890/0/1/2/#", host: "127.0.0.1", port: 5000},
+			want: &brokertable.Node{},
+			err:  brokertable.TopicNameError{},
 		},
 		{
 			name: "Topic name error 04 (not allowed charactor)",
-			args: args{node: &lookuptable.Node{}, topic: "/1234567890/0/1/2/+", host: "127.0.0.1", port: 5000},
-			want: &lookuptable.Node{},
-			err:  lookuptable.TopicNameError{},
+			args: args{node: &brokertable.Node{}, topic: "/1234567890/0/1/2/+", host: "127.0.0.1", port: 5000},
+			want: &brokertable.Node{},
+			err:  brokertable.TopicNameError{},
 		},
 		{
 			name: "Topic name error 05 (not allowed charactor)",
-			args: args{node: &lookuptable.Node{}, topic: "/1234567890/0/1/2/A", host: "127.0.0.1", port: 5000},
-			want: &lookuptable.Node{},
-			err:  lookuptable.TopicNameError{},
+			args: args{node: &brokertable.Node{}, topic: "/1234567890/0/1/2/A", host: "127.0.0.1", port: 5000},
+			want: &brokertable.Node{},
+			err:  brokertable.TopicNameError{},
 		},
 		{
 			name: "Topic name error 06 (not allowed format)",
-			args: args{node: &lookuptable.Node{}, topic: "/1234567890/01/1/2/3", host: "127.0.0.1", port: 5000},
-			want: &lookuptable.Node{},
-			err:  lookuptable.TopicNameError{},
+			args: args{node: &brokertable.Node{}, topic: "/1234567890/01/1/2/3", host: "127.0.0.1", port: 5000},
+			want: &brokertable.Node{},
+			err:  brokertable.TopicNameError{},
 		},
 		{
 			name: "Topic name error 07 (not allowed format)",
-			args: args{node: &lookuptable.Node{}, topic: "/1234567890/10/1/2/3", host: "127.0.0.1", port: 5000},
-			want: &lookuptable.Node{},
-			err:  lookuptable.TopicNameError{},
+			args: args{node: &brokertable.Node{}, topic: "/1234567890/10/1/2/3", host: "127.0.0.1", port: 5000},
+			want: &brokertable.Node{},
+			err:  brokertable.TopicNameError{},
 		},
 		{
 			name: "Topic name error 08 (not allowed format)",
-			args: args{node: &lookuptable.Node{}, topic: "1234567890/0/1/2/3", host: "127.0.0.1", port: 5000},
-			want: &lookuptable.Node{},
-			err:  lookuptable.TopicNameError{},
+			args: args{node: &brokertable.Node{}, topic: "1234567890/0/1/2/3", host: "127.0.0.1", port: 5000},
+			want: &brokertable.Node{},
+			err:  brokertable.TopicNameError{},
 		},
 		{
 			name: "Topic name error 09 (not allowed format)",
-			args: args{node: &lookuptable.Node{}, topic: "/1234567890/0/1/2/3/", host: "127.0.0.1", port: 5000},
-			want: &lookuptable.Node{},
-			err:  lookuptable.TopicNameError{},
+			args: args{node: &brokertable.Node{}, topic: "/1234567890/0/1/2/3/", host: "127.0.0.1", port: 5000},
+			want: &brokertable.Node{},
+			err:  brokertable.TopicNameError{},
 		},
 		{
 			name: "Topic name error 10 (not allowed format)",
-			args: args{node: &lookuptable.Node{}, topic: "/1234567890/0/1/2/3//", host: "127.0.0.1", port: 5000},
-			want: &lookuptable.Node{},
-			err:  lookuptable.TopicNameError{},
+			args: args{node: &brokertable.Node{}, topic: "/1234567890/0/1/2/3//", host: "127.0.0.1", port: 5000},
+			want: &brokertable.Node{},
+			err:  brokertable.TopicNameError{},
 		},
 		{
 			name: "Topic name error 01 (not allowed format)",
-			args: args{node: &lookuptable.Node{}, topic: "/1234567890/0/1/2/3", host: "256.0.0.1", port: 5000},
-			want: &lookuptable.Node{},
-			err:  lookuptable.HostError{},
+			args: args{node: &brokertable.Node{}, topic: "/1234567890/0/1/2/3", host: "256.0.0.1", port: 5000},
+			want: &brokertable.Node{},
+			err:  brokertable.HostError{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := lookuptable.UpdateHost(tt.args.node, tt.args.topic, tt.args.host, tt.args.port)
+			got := brokertable.UpdateHost(tt.args.node, tt.args.topic, tt.args.host, tt.args.port)
 			if tt.err == nil {
 				/** エラーを期待しないテストケース **/
 				if got != tt.err {
@@ -395,25 +395,25 @@ func TestUpdateHost(t *testing.T) {
 //       Node 構造体を文字列に変換する関数がきちんとのことを考慮しているか確認するためのテスト
 func TestString(t *testing.T) {
 	type args struct {
-		node  *lookuptable.Node
+		node *brokertable.Node
 	}
 	tests := []struct {
 		name string
 		args args
-		time int  // 試行回数
+		time int // 試行回数
 	}{
 		{
 			name: "Success 01",
 			args: args{
-				node: &lookuptable.Node{
-					Children: map[string]*lookuptable.Node{
+				node: &brokertable.Node{
+					Children: map[string]*brokertable.Node{
 						"0": {
-							Children: map[string]*lookuptable.Node{},
+							Children: map[string]*brokertable.Node{},
 							Host:     "localhost",
 							Port:     5000,
 						},
 						"1": {
-							Children: map[string]*lookuptable.Node{},
+							Children: map[string]*brokertable.Node{},
 							Host:     "localhost",
 							Port:     5001,
 						},
@@ -428,7 +428,7 @@ func TestString(t *testing.T) {
 	for _, tt := range tests {
 		want := fmt.Sprint(tt.args.node)
 		isFailed := false
-		for i:=0; i < tt.time; i++ {
+		for i := 0; i < tt.time; i++ {
 			t.Run(tt.name, func(t *testing.T) {
 				if fmt.Sprint(tt.args.node) != want {
 					t.Errorf("UpdateHost(); node = %v, expected %v", tt.args.node, want)
