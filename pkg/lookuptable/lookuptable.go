@@ -1,5 +1,5 @@
 /*
-TODO: package名を topictable に変更したほうが良いかも。
+TODO: package名を brokertable に変更したほうが良いかも。
 */
 package lookuptable
 
