@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+// LookupHost 関数は、トピック名から担当している分散ブローカのホスト名とポート番号を検索する
 func LookupHost(root *Node, topic string) (string, uint16, error) {
 	if err := validateTopic(topic); err != nil {
 		return root.Host, root.Port, err
@@ -30,6 +31,9 @@ func LookupHost(root *Node, topic string) (string, uint16, error) {
 	return currentNode.Host, currentNode.Port, nil
 }
 
+// UpdateHost 関数は、トピック名とそれに対応する分散ブローカへの接続情報を更新する
+// 更新の際、当該トピックより深いレベルの分散ブローカへの接続情報は削除される。
+// そのため、更新処理の順序に気を付けること
 func UpdateHost(root *Node, topic string, host string, port uint16) error {
 	if err := validateTopic(topic); err != nil {
 		return err
