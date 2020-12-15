@@ -2,6 +2,7 @@ package broker
 
 import (
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -11,9 +12,11 @@ import (
 /*************  　    以下 broker 構造体関連  　    *************/
 // Broker is the interface definition
 type Broker interface {
+	Publish(topic string, qos byte, retained bool, payload interface{})
 	TryDisconnect(expirationFromLastPub time.Duration, quiesce uint) bool
 	IncreaseSubCnt() error
 	DecreaseSubCnt() error
+	Disconnect(quiesce uint)
 	GetSubCnt() uint
 	UpdateLastPub()
 	GetLastPub() time.Time
@@ -44,6 +47,15 @@ func ConnectBroker(host string, port uint16) (Broker, error) {
 	return b, nil
 }
 
+func (b *broker) Publish(topic string, qos byte, retained bool, payload interface{}) {
+	token := b.Client.Publish(topic, qos, retained, payload)
+	token.Wait()
+	if token.Error() != nil {
+		log.Fatal(token.Error())
+	}
+	b.UpdateLastPub()
+}
+
 func (b *broker) TryDisconnect(expirationFromLastPub time.Duration, quiesce uint) bool {
 	if b.GetSubCnt() != 0 {
 		return false
@@ -53,6 +65,12 @@ func (b *broker) TryDisconnect(expirationFromLastPub time.Duration, quiesce uint
 	}
 	b.Client.Disconnect(quiesce)
 	return true
+}
+
+func (b *broker) Disconnect(quiesce uint) {
+	b.Client.Disconnect(quiesce)
+	b.SubCnt = 0
+	b.LastPub = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC) // Unix time の基準日
 }
 
 func (b *broker) IncreaseSubCnt() error {
