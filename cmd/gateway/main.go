@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	gateway.Gateway()
+	gateway.Entrypoint()
 }
