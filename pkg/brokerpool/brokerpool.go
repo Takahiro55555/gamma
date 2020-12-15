@@ -3,6 +3,7 @@ package brokerpool
 import (
 	"fmt"
 	"gateway/pkg/broker"
+	"log"
 	"reflect"
 	"sync"
 	"time"
@@ -21,6 +22,7 @@ type Brokerpool interface {
 	GetSubCnt(host string, port uint16) (uint, error)
 	GetLastPub(host string, port uint16) (time.Time, error)
 	UpdateLastPub(host string, port uint16) error
+	CloseAllBroker(quiesce uint)
 }
 
 type brokerpool struct {
@@ -96,6 +98,10 @@ func (p *brokerpool) TryDisconnectBroker(host string, port uint16, expirationFro
 	return b.TryDisconnect(expirationFromLastPub, quiesce)
 }
 
+func (p *brokerpool) CloseAllBroker(quiesce uint) {
+	p.bt.closeAllBroker(quiesce)
+}
+
 func (p *brokerpool) IncreaseSubCnt(host string, port uint16) error {
 	b, err := p.GetBroker(host, port)
 	if err != nil {
@@ -153,6 +159,18 @@ func newBrokersTableByHost() *BrokersTableByHost {
 	return &BrokersTableByHost{}
 }
 
+func (t *BrokersTableByHost) closeAllBroker(quiesce uint) {
+	t.t.Range(func(_, v interface{}) bool {
+		t, ok := v.(*BrokerTableByPort)
+		if !ok {
+			log.Fatal(StoredTypeIsInvalidError{Msg: fmt.Sprintf("Stored type is invalid (expected = %T, result = %T)", BrokerTableByPort{}, v)})
+			return true
+		}
+		t.closeAllBroker(quiesce)
+		return true
+	})
+}
+
 // Store 関数
 func (s *BrokersTableByHost) Store(key string, value *BrokerTableByPort) {
 	s.t.Store(key, value)
@@ -183,6 +201,19 @@ type BrokerTableByPort struct {
 
 func newBrokerTableByPort() *BrokerTableByPort {
 	return &BrokerTableByPort{}
+}
+
+func (t *BrokerTableByPort) closeAllBroker(quiesce uint) {
+	t.t.Range(func(key, v interface{}) bool {
+		b, ok := v.(broker.Broker)
+		if !ok {
+			log.Fatal(StoredTypeIsInvalidError{Msg: fmt.Sprintf("Stored type is invalid (expected = %T, result = %T)", BrokerTableByPort{}, v)})
+			return true
+		}
+		b.Disconnect(quiesce)
+		t.t.Delete(key)
+		return true
+	})
 }
 
 // Store 関数
