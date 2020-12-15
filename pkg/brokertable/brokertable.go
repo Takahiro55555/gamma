@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+//////////////        以下、Brokertable 関連              //////////////
+
 // LookupHost 関数は、トピック名から担当している分散ブローカのホスト名とポート番号を検索する
 func LookupHost(root *Node, topic string) (string, uint16, error) {
 	if err := validateTopic(topic); err != nil {
@@ -100,7 +102,9 @@ func validateHost(host string) error {
 	return HostError{Msg: "Invalid host. Allowed 'host' formats are IPv4 address, domain name or 'localhost'."}
 }
 
-/** 構造体 **/
+//////////////        以上、Brokertable 関連              //////////////
+//////////////            以下、Node 関連                 //////////////
+
 type Node struct {
 	Children map[string]*Node
 	Host     string
@@ -137,7 +141,9 @@ func keys(m map[string]*Node) []string {
 	return ks
 }
 
-/** エラー構造体 **/
+//////////////            以上、Node 関連                 //////////////
+//////////////           以下、エラー 関連                 //////////////
+
 type TopicNameError struct {
 	Msg string
 }
@@ -153,3 +159,5 @@ type HostError struct {
 func (e HostError) Error() string {
 	return fmt.Sprintf("Error: %v", e.Msg)
 }
+
+//////////////           以上、エラー 関連                 //////////////

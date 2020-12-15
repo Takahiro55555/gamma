@@ -13,7 +13,8 @@ import (
 )
 
 func Entrypoint() {
-	////// ゲートウェイブローカへ接続するための準備 //////
+
+	//////////////    ゲートウェイブローカへ接続するための準備    //////////////
 	gatewayBroker := "tcp://127.0.0.1:1883"
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(gatewayBroker)
@@ -26,7 +27,7 @@ func Entrypoint() {
 	}
 	defer gatewayClient.Disconnect(1000)
 
-	////// メッセージハンドラの作成・登録 //////
+	//////////////        メッセージハンドラの作成・登録         //////////////
 
 	// Subscribe するトピックをリクエストするトピック
 	apiRegisterMsgCh := make(chan mqtt.Message)
@@ -62,7 +63,7 @@ func Entrypoint() {
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, os.Interrupt)
 
-	////// 分散ブローカに関する情報を管理するオブジェクト //////
+	////////////// 分散ブローカに関する情報を管理するオブジェクト //////////////
 
 	// 分散ブローカ接続情報管理オブジェクト
 	rootNode := &brokertable.Node{}

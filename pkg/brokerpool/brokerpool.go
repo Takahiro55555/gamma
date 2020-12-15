@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-/*************  　  以下 brokerpool 構造体関連  　  *************/
+//////////////  　  以下 brokerpool 構造体関連  　  //////////////
 
 // Brokerpool is the interface definition
 type Brokerpool interface {
@@ -147,8 +147,8 @@ func (p *brokerpool) UpdateLastPub(host string, port uint16) error {
 	return nil
 }
 
-/*************  　  以上 brokerpool 構造体関連  　  *************/
-/*************　以下 BrokersTableByHost 構造体関連 *************/
+//////////////  　  以上 brokerpool 構造体関連  　  //////////////
+//////////////　以下 BrokersTableByHost 構造体関連  //////////////
 
 // BrokersTableByHost 構造体を管理する構造体 (map)
 type BrokersTableByHost struct {
@@ -191,8 +191,8 @@ func (s *BrokersTableByHost) Load(key string) (*BrokerTableByPort, error) {
 	return t, nil
 }
 
-/*************　以上 BrokersTableByHost 構造体関連 *************/
-/*************　以下 BrokerTableByPort 構造体関連  *************/
+//////////////　以上 BrokersTableByHost 構造体関連 //////////////
+//////////////　以下 BrokerTableByPort 構造体関連  //////////////
 
 // BrokerTableByPort 構造体は broker interface を管理する構造体 (Map)
 type BrokerTableByPort struct {
@@ -236,8 +236,8 @@ func (s *BrokerTableByPort) Load(key uint16) (broker.Broker, error) {
 	return t, nil
 }
 
-/*************　以上 BrokerTableByPort 構造体関連 *************/
-/*************      　以下 Error 構造体関連       *************/
+//////////////　以上 BrokerTableByPort 構造体関連 //////////////
+//////////////      　以下 Error 構造体関連       //////////////
 
 // AlreadyConnectedError 構造体
 // 同一ブローカへの２重接続が発生した際に使用する
@@ -269,4 +269,4 @@ func (e StoredTypeIsInvalidError) Error() string {
 	return fmt.Sprintf("Error: %v", e.Msg)
 }
 
-/*************      　以上 Error 構造体関連       *************/
+//////////////      　以上 Error 構造体関連       //////////////
