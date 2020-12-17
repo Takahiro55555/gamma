@@ -40,12 +40,12 @@ func NewSubsctable(c mqtt.Client, qos byte, ch chan<- mqtt.Message) Subsctable {
 	return &subsctable{client: c, qos: qos, msgCh: ch}
 }
 
-func (st *subsctable) Subscribe(topic string) error {
+func (st *subsctable) IncreaseSubscriber(topic string) error {
+	// トピック名の前処理
 	err := validateTopic(topic)
 	if err != nil {
 		return err
 	}
-	// トピック名の前処理
 	rep := regexp.MustCompile(`^/`) // 先頭の "/" が邪魔なため、削除
 	editedTopic := rep.ReplaceAllString(topic, "")
 
@@ -59,7 +59,7 @@ func (st *subsctable) Subscribe(topic string) error {
 			hasActiveWildcardNode = true
 		}
 
-		currentNode, err := currentNode.children.Load(child)
+		currentNode, err = currentNode.children.Load(child)
 
 		// 子ノードが存在しない場合は、追加する
 		if reflect.ValueOf(err).Type() == typeNotFoundErr {
@@ -99,19 +99,56 @@ func (st *subsctable) Subscribe(topic string) error {
 	return nil
 }
 
-// func (st *subsctable) RemoveSubscriber(topic string) error {
-// 	err := validateTopic(topic)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	rep := regexp.MustCompile(`^/`)
-// 	topicSlice := strings.Split(rep.ReplaceAllString(topic, ""), "/")
-// 	typeNotFoundErr := reflect.ValueOf(NotFoundError{}).Type()
-// 	for _, child := range topicSlice {
+func (st *subsctable) DecreaseSubscriber(topic string) error {
+	// トピック名の前処理
+	err := validateTopic(topic)
+	if err != nil {
+		return err
+	}
+	rep := regexp.MustCompile(`^/`) // 先頭の "/" が邪魔なため、削除
+	editedTopic := rep.ReplaceAllString(topic, "")
 
-// 	}
-// 	return nil
-// }
+	currentNode := st.rootNode
+	hasActiveWildcardNode := false
+	var activeWildcardNode *node
+	topicSlice := strings.Split(editedTopic, "/")
+	for _, child := range topicSlice {
+		// 与えられたトピックをカバーするワイルドカードトピックが既に Subscribe されていた場合
+		if !hasActiveWildcardNode && currentNode.HasActiveWildcardNode() {
+			hasActiveWildcardNode = true
+			activeWildcardNode, err = currentNode.children.Load("#")
+			if err != nil {
+				return err
+			}
+		}
+		currentNode, err = currentNode.children.Load(child)
+		if err != nil {
+			return err
+		}
+	}
+
+	// currentNode と activeWildcardNode が同じ場合
+	currentNode.DecreaseSubCnt()
+	if hasActiveWildcardNode && currentNode.topic == activeWildcardNode.topic && currentNode.GetSubCnt() == 0 {
+		// メッセージハンドラ
+		var fForwardMsg mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
+			st.msgCh <- msg
+		}
+
+		// 子ノードのトピックを必要に応じて Subscribe する
+		currentNode.SubscribeChildrenTopics(st.client, st.qos, fForwardMsg)
+
+		// Unsubscribe する
+		if token := st.client.Unsubscribe(currentNode.topic); token.Wait() && token.Error() != nil {
+			return token.Error()
+		}
+	} else if !hasActiveWildcardNode && currentNode.GetSubCnt() == 0 {
+		if token := st.client.Unsubscribe(currentNode.topic); token.Wait() && token.Error() != nil {
+			return token.Error()
+		}
+	}
+	return nil
+}
 
 //////////////          以上、Subsctable 関連              //////////////
 //////////////           以下、nodeMap 関連                //////////////
@@ -226,6 +263,43 @@ func (s *node) DecreaseSubCnt() error {
 		return nil
 	}
 	return ZeroSubCntError{Msg: "SubCnt is already zero"}
+}
+
+// 子ノードが Subscribe している Topic を必要に応じて Subscribe する
+func (s *node) SubscribeChildrenTopics(c mqtt.Client, qos byte, callback mqtt.MessageHandler) {
+	// 子ノードに有効なワイルドカードノードが存在する場合は、そのワイルドカードトピックのみを Subscribe し、
+	// 自身や他の子ノードのトピックは Subscribe しない
+	if s.HasActiveWildcardNode() {
+		n, err := s.children.Load("#")
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+		if token := c.Subscribe(n.topic, qos, callback); token.Wait() && token.Error() != nil {
+			log.Fatalf("Mqtt error: %s", token.Error())
+		}
+		return
+	}
+
+	// 子ノードに有効なワイルドカードノードが存在しない場合は、自身のトピックの Subscribe を試行する
+	if s.GetSubCnt() > 0 {
+		if token := c.Subscribe(s.topic, qos, callback); token.Wait() && token.Error() != nil {
+			log.Fatalf("Mqtt error: %s", token.Error())
+		}
+	}
+
+	// 子ノードに対して再帰処理を行う
+	keys := s.children.Keys()
+	for _, k := range keys {
+		n, err := s.children.Load(k)
+		if err != nil {
+			log.Fatal(err)
+			continue
+		}
+
+		// 再帰関数に渡す
+		n.SubscribeChildrenTopics(c, qos, callback)
+	}
 }
 
 // 子ノードが Subscribe している Topic を全て Unsubscribe する
