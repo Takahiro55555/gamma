@@ -50,6 +50,9 @@ func ConnectBroker(host string, port uint16, qos byte, ch chan<- mqtt.Message) (
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("tcp://%v:%v", host, port))
 	c := mqtt.NewClient(opts)
+	if token := c.Connect(); token.Wait() && token.Error() != nil {
+		return nil, token.Error()
+	}
 	b := NewBroker(c, qos, ch)
 	return b, nil
 }
