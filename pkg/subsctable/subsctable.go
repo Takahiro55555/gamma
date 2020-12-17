@@ -15,6 +15,9 @@ import (
 //////////////          以下、Subsctable 関連              //////////////
 
 type Subsctable interface {
+	String() string
+	IncreaseSubscriber(topic string) error
+	DecreaseSubscriber(topic string) error
 }
 
 type subsctable struct {

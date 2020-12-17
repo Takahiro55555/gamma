@@ -49,10 +49,10 @@ func Entrypoint() {
 		return
 	}
 
-	// ゲートウェイブローカへメッセージを転送するためのトピック
-	apiForwardMsgCh := make(chan mqtt.Message, 10)
+	// ゲートウェイブローカ ==> このプログラム ==> 当該分散ブローカへメッセージを転送するためのトピック
+	apiMsgChForwardToDistributedBroker := make(chan mqtt.Message, 10)
 	var fForwardMsg mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
-		apiForwardMsgCh <- msg
+		apiMsgChForwardToDistributedBroker <- msg
 	}
 	if subscribeToken := gatewayClient.Subscribe("/forward", 0, fForwardMsg); subscribeToken.Wait() && subscribeToken.Error() != nil {
 		log.Fatal(subscribeToken.Error())
@@ -73,21 +73,48 @@ func Entrypoint() {
 	brokertable.UpdateHost(rootNode, "/2", "localhost", 1896)
 	brokertable.UpdateHost(rootNode, "/3", "localhost", 1897)
 
-	bp := brokerpool.NewBrokerPool()
+	// 分散ブローカ ==> このプログラム ==> ゲートウェイブローカへ転送するためのチャンネル
+	apiMsgChForwardToGatewayBroker := make(chan mqtt.Message, 10)
+	bp := brokerpool.NewBrokerPool(0, apiMsgChForwardToGatewayBroker)
 	defer bp.CloseAllBroker(100)
 	for {
 		select {
 		// Client からの Subscribe リクエストを処理する
 		case m := <-apiRegisterMsgCh:
-			fmt.Printf("topic: %v, payload: %v\n", m.Topic(), string(m.Payload()))
+			topic := string(m.Payload())
+			host, port, err := brokertable.LookupHost(rootNode, topic)
+			if err != nil {
+				log.Fatal(err)
+				continue
+			}
+			b, err := bp.GetOrConnectBroker(host, port)
+			if err != nil {
+				log.Fatal(err)
+				continue
+			}
+			b.Subscribe(topic)
 
 		// Client からの Unsubscribe リクエストを処理する
 		case m := <-apiUnregisterMsgCh:
-			fmt.Printf("topic: %v, payload: %v\n", m.Topic(), string(m.Payload()))
+			topic := string(m.Payload())
+			host, port, err := brokertable.LookupHost(rootNode, topic)
+			if err != nil {
+				log.Fatal(err)
+				continue
+			}
+			b, err := bp.GetOrConnectBroker(host, port)
+			if err != nil {
+				log.Fatal(err)
+				continue
+			}
+			b.Unsubscribe(topic)
 
-		// 当該分散ブローカへ転送する
-		case m := <-apiForwardMsgCh:
-			fmt.Printf("topic: %v, payload: %v\n", m.Topic(), string(m.Payload()))
+		// 分散ブローカ ==> このプログラム ==> ゲートウェイブローカへ転送する
+		case m := <-apiMsgChForwardToGatewayBroker:
+			gatewayClient.Publish(m.Topic(), 0, false, m.Payload())
+
+		// ゲートウェイブローカ ==> このプログラム ==> 当該分散ブローカへ転送する
+		case m := <-apiMsgChForwardToDistributedBroker:
 			topic := strings.Replace(m.Topic(), "/forward", "", 1)
 			host, port, err := brokertable.LookupHost(rootNode, topic)
 			if err != nil {
@@ -99,7 +126,7 @@ func Entrypoint() {
 				log.Fatal(err)
 				continue
 			}
-			b.Publish(topic, 0, false, m.Payload())
+			b.Publish(topic, false, m.Payload())
 
 		case <-signalCh:
 			fmt.Printf("\nInterrupt detected.\n")

@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"sync"
 	"time"
+
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 //////////////  　  以下 brokerpool 構造体関連  　  //////////////
@@ -26,12 +28,14 @@ type Brokerpool interface {
 }
 
 type brokerpool struct {
-	bt BrokersTableByHost
+	bt  BrokersTableByHost
+	qos byte
+	ch  chan<- mqtt.Message
 }
 
 // NewBrokerPool は blokerpool 構造体を生成し、Brokerpool interface を返す
-func NewBrokerPool() Brokerpool {
-	return &brokerpool{}
+func NewBrokerPool(qos byte, ch chan<- mqtt.Message) Brokerpool {
+	return &brokerpool{bt: BrokersTableByHost{}, qos: qos, ch: ch}
 }
 
 func (p *brokerpool) GetBroker(host string, port uint16) (broker.Broker, error) {
@@ -59,7 +63,7 @@ func (p *brokerpool) ConnectBroker(host string, port uint16) error {
 	}
 
 	// ブローカへの接続を試みる
-	b, err = broker.ConnectBroker(host, port)
+	b, err = broker.ConnectBroker(host, port, p.qos, p.ch)
 	if err != nil {
 		return err
 	}
@@ -230,7 +234,7 @@ func (s *BrokerTableByPort) Load(key uint16) (broker.Broker, error) {
 
 	t, ok := v.(broker.Broker)
 	if !ok {
-		return nil, StoredTypeIsInvalidError{Msg: fmt.Sprintf("Stored type is invalid (expected = %T, result = %T)", broker.NewBroker(nil), v)}
+		return nil, StoredTypeIsInvalidError{Msg: fmt.Sprintf("Stored type is invalid (expected = %T, result = %T)", broker.NewBroker(nil, 0, nil), v)}
 	}
 
 	return t, nil

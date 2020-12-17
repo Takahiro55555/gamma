@@ -2,6 +2,7 @@ package broker
 
 import (
 	"fmt"
+	"gateway/pkg/subsctable"
 	"log"
 	"sync"
 	"time"
@@ -12,11 +13,13 @@ import (
 //////////////  　    以下 broker 構造体関連  　    //////////////
 // Broker is the interface definition
 type Broker interface {
-	Publish(topic string, qos byte, retained bool, payload interface{})
+	Publish(topic string, retained bool, payload interface{})
+	Subscribe(topic string) error
+	Unsubscribe(topic string) error
 	TryDisconnect(expirationFromLastPub time.Duration, quiesce uint) bool
+	Disconnect(quiesce uint)
 	IncreaseSubCnt() error
 	DecreaseSubCnt() error
-	Disconnect(quiesce uint)
 	GetSubCnt() uint
 	UpdateLastPub()
 	GetLastPub() time.Time
@@ -29,31 +32,43 @@ type broker struct {
 	SubCnt    uint // 接続先分散ブローカーへ Subscribe 要求している MQTT クライアントの数
 	LastPubMu sync.RWMutex
 	LastPub   time.Time // 接続先分散ブローカーへ MQTT クライアントが最後に Publish 要求をした時刻
+	subTb     subsctable.Subsctable
+	qos       byte
 }
 
-func NewBroker(c mqtt.Client) Broker {
+func NewBroker(c mqtt.Client, qos byte, ch chan<- mqtt.Message) Broker {
 	return &broker{
 		Client:  c,
 		SubCnt:  0,
 		LastPub: time.Now(),
+		qos:     qos,
+		subTb:   subsctable.NewSubsctable(c, qos, ch),
 	}
 }
 
-func ConnectBroker(host string, port uint16) (Broker, error) {
+func ConnectBroker(host string, port uint16, qos byte, ch chan<- mqtt.Message) (Broker, error) {
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("tcp://%v:%v", host, port))
 	c := mqtt.NewClient(opts)
-	b := NewBroker(c)
+	b := NewBroker(c, qos, ch)
 	return b, nil
 }
 
-func (b *broker) Publish(topic string, qos byte, retained bool, payload interface{}) {
-	token := b.Client.Publish(topic, qos, retained, payload)
+func (b *broker) Publish(topic string, retained bool, payload interface{}) {
+	token := b.Client.Publish(topic, b.qos, retained, payload)
 	token.Wait()
 	if token.Error() != nil {
 		log.Fatal(token.Error())
 	}
 	b.UpdateLastPub()
+}
+
+func (b *broker) Subscribe(topic string) error {
+	return b.subTb.IncreaseSubscriber(topic)
+}
+
+func (b *broker) Unsubscribe(topic string) error {
+	return b.subTb.DecreaseSubscriber(topic)
 }
 
 func (b *broker) TryDisconnect(expirationFromLastPub time.Duration, quiesce uint) bool {
