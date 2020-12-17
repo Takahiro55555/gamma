@@ -30,6 +30,7 @@ func LookupHost(root *Node, topic string) (string, uint16, error) {
 	return currentNode.Host, currentNode.Port, nil
 }
 
+// FIXME: 動的な分散ブローカの追加、削除には未対応（Broker.SubCntの引継ぎを何も考えていない）
 // UpdateHost 関数は、トピック名とそれに対応する分散ブローカへの接続情報を更新する
 // 更新の際、当該トピックより深いレベルの分散ブローカへの接続情報は削除される。
 // そのため、更新処理の順序に気を付けること
