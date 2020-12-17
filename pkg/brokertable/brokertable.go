@@ -80,7 +80,7 @@ func validateTopic(topic string) error {
 	if rTopic.MatchString(topic) {
 		return nil
 	}
-	return TopicNameError{Msg: "Invalid topic name. Allowed topic name`s regular expressions is '^/([0-9]+(/[0-3])*)?$' ."}
+	return TopicNameError{Msg: fmt.Sprintf("Invalid topic name(%v). Allowed topic name`s regular expressions is '^/([0-9]+(/[0-3])*)?$' .", topic)}
 }
 
 func validateHost(host string) error {

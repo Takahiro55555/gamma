@@ -36,11 +36,11 @@ func validateTopic(topic string) error {
 	if rTopic.MatchString(topic) {
 		return nil
 	}
-	return TopicNameError{Msg: "Invalid topic name. Allowed topic name`s regular expressions is '^/([0-9]+(/[0-3])*)?((/#)|(/[\\w]+))?$' ."}
+	return TopicNameError{Msg: fmt.Sprintf("Invalid topic name(%v). Allowed topic name`s regular expressions is '^/([0-9]+(/[0-3])*)?((/#)|(/[\\w]+))?$' .", topic)}
 }
 
 func NewSubsctable(c mqtt.Client, qos byte, ch chan<- mqtt.Message) Subsctable {
-	return &subsctable{client: c, qos: qos, msgCh: ch}
+	return &subsctable{rootNode: &node{children: nodeMap{}}, client: c, qos: qos, msgCh: ch}
 }
 
 func (st *subsctable) IncreaseSubscriber(topic string) error {
@@ -62,11 +62,15 @@ func (st *subsctable) IncreaseSubscriber(topic string) error {
 			hasActiveWildcardNode = true
 		}
 
-		currentNode, err = currentNode.children.Load(child)
+		tmpNode, err := currentNode.children.Load(child)
 
 		// 子ノードが存在しない場合は、追加する
-		if reflect.ValueOf(err).Type() == typeNotFoundErr {
-			newNode := &node{parent: currentNode}
+		if err == nil {
+			currentNode = tmpNode
+		} else if reflect.ValueOf(err).Type() == typeNotFoundErr {
+			fmt.Println("Add children: " + child)
+			fmt.Println(currentNode)
+			newNode := &node{parent: currentNode, children: nodeMap{}}
 			currentNode.children.Store(child, newNode)
 			currentNode = newNode
 		} else if err != nil {
@@ -99,6 +103,7 @@ func (st *subsctable) IncreaseSubscriber(topic string) error {
 			currentNode.parent.UnsubscribeChildrenTopics(st.client)
 		}
 	}
+	fmt.Printf("IncreaseSubscriber() currentNode: %v", currentNode)
 	return nil
 }
 
@@ -150,6 +155,8 @@ func (st *subsctable) DecreaseSubscriber(topic string) error {
 			return token.Error()
 		}
 	}
+	fmt.Printf("DecreaseSubscriber() currentNode: %v", currentNode)
+	fmt.Printf("DecreaseSubscriber() activeWildcardNode: %v", activeWildcardNode)
 	return nil
 }
 

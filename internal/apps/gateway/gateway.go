@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -44,7 +45,7 @@ func Entrypoint() {
 	var fUnregisterMsg mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 		apiUnregisterMsgCh <- msg
 	}
-	if subscribeToken := gatewayClient.Subscribe("/api/register", 0, fUnregisterMsg); subscribeToken.Wait() && subscribeToken.Error() != nil {
+	if subscribeToken := gatewayClient.Subscribe("/api/unregister", 0, fUnregisterMsg); subscribeToken.Wait() && subscribeToken.Error() != nil {
 		log.Fatal(subscribeToken.Error())
 		return
 	}
@@ -81,8 +82,12 @@ func Entrypoint() {
 		select {
 		// Client からの Subscribe リクエストを処理する
 		case m := <-apiRegisterMsgCh:
+			fmt.Println("apiRegisterMsgCh")
 			topic := string(m.Payload())
-			host, port, err := brokertable.LookupHost(rootNode, topic)
+			rep := regexp.MustCompile(`/#$`)
+			editedTopic := rep.ReplaceAllString(topic, "")
+			fmt.Println(editedTopic)
+			host, port, err := brokertable.LookupHost(rootNode, editedTopic)
 			if err != nil {
 				log.Fatal(err)
 				continue
@@ -96,8 +101,12 @@ func Entrypoint() {
 
 		// Client からの Unsubscribe リクエストを処理する
 		case m := <-apiUnregisterMsgCh:
+			fmt.Println("apiUnregisterMsgCh")
 			topic := string(m.Payload())
-			host, port, err := brokertable.LookupHost(rootNode, topic)
+			rep := regexp.MustCompile(`/#$`)
+			editedTopic := rep.ReplaceAllString(topic, "")
+			fmt.Println(editedTopic)
+			host, port, err := brokertable.LookupHost(rootNode, editedTopic)
 			if err != nil {
 				log.Fatal(err)
 				continue
@@ -111,6 +120,7 @@ func Entrypoint() {
 
 		// 分散ブローカ ==> このプログラム ==> ゲートウェイブローカへ転送する
 		case m := <-apiMsgChForwardToGatewayBroker:
+			fmt.Printf("topic: %v, msg: %v\n", m.Topic(), string(m.Payload()))
 			gatewayClient.Publish(m.Topic(), 0, false, m.Payload())
 
 		// ゲートウェイブローカ ==> このプログラム ==> 当該分散ブローカへ転送する
