@@ -40,7 +40,7 @@ func NewSubsctable(c mqtt.Client, qos byte, ch chan<- mqtt.Message) Subsctable {
 	return &subsctable{client: c, qos: qos, msgCh: ch}
 }
 
-func (st *subsctable) AddSubscriber(topic string) error {
+func (st *subsctable) Subscribe(topic string) error {
 	err := validateTopic(topic)
 	if err != nil {
 		return err
@@ -48,15 +48,17 @@ func (st *subsctable) AddSubscriber(topic string) error {
 	// トピック名の前処理
 	rep := regexp.MustCompile(`^/`) // 先頭の "/" が邪魔なため、削除
 	editedTopic := rep.ReplaceAllString(topic, "")
-	rep = regexp.MustCompile(`/#$`) // 末尾の "#" が邪魔なため、削除
-	editedTopic = rep.ReplaceAllString(editedTopic, "")
 
-	currentNode := st.rootNode // subCnt をカウントアップするノード
-	// subscNode := currentNode   // 実際にSubscribeするノード
-	isUpdatedSubscNode := false
+	currentNode := st.rootNode
+	hasActiveWildcardNode := false
 	topicSlice := strings.Split(editedTopic, "/")
 	typeNotFoundErr := reflect.ValueOf(NotFoundError{}).Type()
 	for _, child := range topicSlice {
+		// 与えられたトピックをカバーするワイルドカードトピックが既に Subscribe されていた場合
+		if !hasActiveWildcardNode && currentNode.HasActiveWildcardNode() {
+			hasActiveWildcardNode = true
+		}
+
 		currentNode, err := currentNode.children.Load(child)
 
 		// 子ノードが存在しない場合は、追加する
@@ -67,27 +69,10 @@ func (st *subsctable) AddSubscriber(topic string) error {
 		} else if err != nil {
 			return err
 		}
-
-		// マルチレベルワイルドカードが指定されていた場合
-		// if strings.HasSuffix(currentNode.topic, "/#") {
-		// 	subscNode = currentNode
-		// 	isUpdatedSubscNode = true
-		// }
-	}
-	if !isUpdatedSubscNode {
-		// subscNode = currentNode
-
 	}
 
-	// メッセージハンドラ
-	var fForwardMsg mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
-		st.msgCh <- msg
-	}
-
-	// if currentNode.GetSubCnt() == 0 {
-	// 	// currentNode にトピック名を設定する
-	// 	currentNode.topic = topic
-	// }
+	// トピック名の設定
+	currentNode.topic = topic
 
 	// カウンターのカウントアップ
 	err = currentNode.AddSubCnt()
@@ -95,27 +80,22 @@ func (st *subsctable) AddSubscriber(topic string) error {
 		return err
 	}
 
-	//
-	if strings.HasSuffix(topic, "/#") && !strings.HasSuffix(currentNode.topic, "/#") {
-		// マルチレベルワイルドカードが指定されていが、currentNode.topic には無い場合
-
-		if token := st.client.Subscribe(topic, st.qos, fForwardMsg); token.Wait() && token.Error() != nil {
-			return token.Error()
-		}
-
-		if currentNode.topic != "" {
-			if token := st.client.Unsubscribe(currentNode.topic); token.Wait() && token.Error() != nil {
-				log.Fatalf("Mqtt error: %s", token.Error())
-			}
-		}
-
-		// トピック名を設定する
-		currentNode.topic = topic
-
-		// 子ノードのトピックを全て Unsubscribe する
-		currentNode.UnsubscribeChildrenTopics(st.client)
+	// メッセージハンドラ
+	var fForwardMsg mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
+		st.msgCh <- msg
 	}
 
+	// 与えられたトピックをカバーするワイルドカードトピックが Subscribe されていなかった場合
+	if !hasActiveWildcardNode {
+		if token := st.client.Subscribe(currentNode.topic, st.qos, fForwardMsg); token.Wait() && token.Error() != nil {
+			return token.Error()
+		}
+		if strings.HasSuffix(topic, "/#") {
+			// 子ノードのトピックを全て Unsubscribe する
+			// REVIEW: 次のようなトピック名を与えられた場合の挙動が心配 : "/#"
+			currentNode.parent.UnsubscribeChildrenTopics(st.client)
+		}
+	}
 	return nil
 }
 
@@ -211,14 +191,6 @@ func (n *node) String() string {
 	return result
 }
 
-// node.subCnt のカウントアップは行わない
-// func (s *node) Subscribe(c mqtt.Client, topic string) error {
-// 	// 本ノードの担当トピックにワイルドカードが指定されておらず、
-// 	if !strings.HasSuffix(s.topic, "/#") && strings.HasSuffix(topic, "/#") {
-
-// 	}
-// }
-
 func (s *node) HasActiveWildcardNode() bool {
 	n, err := s.children.Load("#")
 	if err != nil {
@@ -258,7 +230,33 @@ func (s *node) DecreaseSubCnt() error {
 
 // 子ノードが Subscribe している Topic を全て Unsubscribe する
 // ただし、node.subCnt はそのまま
+// また、直接の子ノードになるワイルドカードトピックは Unsubscribe しない
 func (s *node) UnsubscribeChildrenTopics(c mqtt.Client) {
+	keys := s.children.Keys()
+	for _, k := range keys {
+		if k == "#" {
+			continue
+		}
+		n, err := s.children.Load(k)
+		if err != nil {
+			log.Fatal(err)
+			continue
+		}
+		// Unsubscribe する
+		if n.GetSubCnt() > 0 {
+			if token := c.Unsubscribe(n.topic); token.Wait() && token.Error() != nil {
+				log.Fatalf("Mqtt error: %s", token.Error())
+				return
+			}
+		}
+		// 再帰関数に渡す
+		n.unsubscribeAllChildrenTopics(c)
+	}
+}
+
+// 子ノードが Subscribe している Topic を全て Unsubscribe する
+// ただし、node.subCnt はそのまま
+func (s *node) unsubscribeAllChildrenTopics(c mqtt.Client) {
 	keys := s.children.Keys()
 	for _, k := range keys {
 		n, err := s.children.Load(k)
@@ -274,7 +272,7 @@ func (s *node) UnsubscribeChildrenTopics(c mqtt.Client) {
 			}
 		}
 		// 再帰処理
-		n.UnsubscribeChildrenTopics(c)
+		n.unsubscribeAllChildrenTopics(c)
 	}
 }
 
