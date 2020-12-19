@@ -32,11 +32,11 @@ func (st *subsctable) String() string {
 }
 
 func validateTopic(topic string) error {
-	rTopic := regexp.MustCompile(`^/([0-9]+(/[0-3])*)?((/#)|(/[\w]+))?$`)
+	rTopic := regexp.MustCompile(`^(/[0-9]+(/[0-3])*)?((/#)|(/[\w]+))?$`)
 	if rTopic.MatchString(topic) {
 		return nil
 	}
-	return TopicNameError{Msg: fmt.Sprintf("Invalid topic name(%v). Allowed topic name`s regular expressions is '^/([0-9]+(/[0-3])*)?((/#)|(/[\\w]+))?$' .", topic)}
+	return TopicNameError{Msg: fmt.Sprintf("Invalid topic name(%v). Allowed topic name`s regular expressions is '^(/[0-9]+(/[0-3])*)?((/#)|(/[\\w]+))?$' .", topic)}
 }
 
 func NewSubsctable(c mqtt.Client, qos byte, ch chan<- mqtt.Message) Subsctable {
