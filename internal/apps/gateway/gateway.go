@@ -55,7 +55,7 @@ func Entrypoint() {
 	var fForwardMsg mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 		apiMsgChForwardToDistributedBroker <- msg
 	}
-	if subscribeToken := gatewayClient.Subscribe("/forward", 0, fForwardMsg); subscribeToken.Wait() && subscribeToken.Error() != nil {
+	if subscribeToken := gatewayClient.Subscribe("/forward/#", 0, fForwardMsg); subscribeToken.Wait() && subscribeToken.Error() != nil {
 		log.Fatal(subscribeToken.Error())
 		return
 	}
@@ -125,6 +125,7 @@ func Entrypoint() {
 
 		// ゲートウェイブローカ ==> このプログラム ==> 当該分散ブローカへ転送する
 		case m := <-apiMsgChForwardToDistributedBroker:
+			fmt.Printf("topic: %v, msg: %v\n", m.Topic(), string(m.Payload()))
 			topic := strings.Replace(m.Topic(), "/forward", "", 1)
 			host, port, err := brokertable.LookupHost(rootNode, topic)
 			if err != nil {
