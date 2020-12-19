@@ -67,10 +67,12 @@ func (b *broker) Publish(topic string, retained bool, payload interface{}) {
 }
 
 func (b *broker) Subscribe(topic string) error {
+	b.IncreaseSubCnt()
 	return b.subTb.IncreaseSubscriber(topic)
 }
 
 func (b *broker) Unsubscribe(topic string) error {
+	b.DecreaseSubCnt()
 	return b.subTb.DecreaseSubscriber(topic)
 }
 
@@ -78,7 +80,7 @@ func (b *broker) TryDisconnect(expirationFromLastPub time.Duration, quiesce uint
 	if b.GetSubCnt() != 0 {
 		return false
 	}
-	if b.GetLastPub().Add(expirationFromLastPub).Before(time.Now()) {
+	if b.GetLastPub().Add(expirationFromLastPub).After(time.Now()) {
 		return false
 	}
 	b.Client.Disconnect(quiesce)
