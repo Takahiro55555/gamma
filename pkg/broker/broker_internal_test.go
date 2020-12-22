@@ -57,7 +57,6 @@ func TestIncreaseSubCnt(t *testing.T) {
 			},
 		},
 	}
-	_ = tests
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.args.b.IncreaseSubCnt()
@@ -120,7 +119,6 @@ func TestDecreaseSubCnt(t *testing.T) {
 			},
 		},
 	}
-	_ = tests
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.args.b.DecreaseSubCnt()
@@ -161,7 +159,6 @@ func TestGetSubCnt(t *testing.T) {
 			},
 		},
 	}
-	_ = tests
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.args.b.GetSubCnt()
@@ -190,7 +187,6 @@ func TestUpdateLastPub(t *testing.T) {
 			},
 		},
 	}
-	_ = tests
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.args.b.GetLastPub()
