@@ -1,13 +1,11 @@
 package gateway
 
 import (
-	"fmt"
 	"gateway/pkg/brokerpool"
 	"gateway/pkg/brokertable"
 
 	"os"
 	"os/signal"
-	"regexp"
 	"strings"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -90,11 +88,9 @@ func Entrypoint() {
 		select {
 		// Client からの Subscribe リクエストを処理する
 		case m := <-apiRegisterMsgCh:
-			fmt.Println("apiRegisterMsgCh")
 			topic := string(m.Payload())
-			rep := regexp.MustCompile(`/#$`)
-			editedTopic := rep.ReplaceAllString(topic, "")
-			fmt.Println(editedTopic)
+			editedTopic := strings.Replace(topic, "/#", "", 1)
+			log.WithFields(log.Fields{"topic": editedTopic}).Debug("apiRegisterMsgCh")
 			host, port, err := brokertable.LookupHost(rootNode, editedTopic)
 			if err != nil {
 				log.WithFields(log.Fields{"topic": topic, "error": err}).Error("Brokertable LookupHost error")
@@ -109,11 +105,9 @@ func Entrypoint() {
 
 		// Client からの Unsubscribe リクエストを処理する
 		case m := <-apiUnregisterMsgCh:
-			fmt.Println("apiUnregisterMsgCh")
 			topic := string(m.Payload())
-			rep := regexp.MustCompile(`/#$`)
-			editedTopic := rep.ReplaceAllString(topic, "")
-			fmt.Println(editedTopic)
+			editedTopic := strings.Replace(topic, "/#", "", 1)
+			log.WithFields(log.Fields{"topic": editedTopic}).Debug("apiUnregisterMsgCh")
 			host, port, err := brokertable.LookupHost(rootNode, editedTopic)
 			if err != nil {
 				log.WithFields(log.Fields{"topic": topic, "error": err}).Error("Brokertable LookupHost error")
@@ -128,12 +122,12 @@ func Entrypoint() {
 
 		// 分散ブローカ ==> このプログラム ==> ゲートウェイブローカへ転送する
 		case m := <-apiMsgChForwardToGatewayBroker:
-			fmt.Printf("topic: %v, msg: %v\n", m.Topic(), string(m.Payload()))
+			log.WithFields(log.Fields{"topic": m.Topic(), "payload": string(m.Payload())}).Debug("apiMsgChForwardToGatewayBroker")
 			gatewayClient.Publish(m.Topic(), 0, false, m.Payload())
 
 		// ゲートウェイブローカ ==> このプログラム ==> 当該分散ブローカへ転送する
 		case m := <-apiMsgChForwardToDistributedBroker:
-			fmt.Printf("topic: %v, msg: %v\n", m.Topic(), string(m.Payload()))
+			log.WithFields(log.Fields{"topic": m.Topic(), "payload": string(m.Payload())}).Debug("apiMsgChForwardToDistributedBroker")
 			topic := strings.Replace(m.Topic(), "/forward", "", 1)
 			host, port, err := brokertable.LookupHost(rootNode, topic)
 			if err != nil {

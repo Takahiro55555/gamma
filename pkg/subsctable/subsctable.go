@@ -69,8 +69,11 @@ func (st *subsctable) IncreaseSubscriber(topic string) error {
 		if err == nil {
 			currentNode = tmpNode
 		} else if reflect.ValueOf(err).Type() == typeNotFoundErr {
-			fmt.Println("Add children: " + child)
-			fmt.Println(currentNode)
+			log.WithFields(log.Fields{
+				"root_node":    fmt.Sprint(st.rootNode),
+				"current_node": fmt.Sprint(currentNode),
+				"children":     child,
+			}).Debug("Add children")
 			newNode := &node{parent: currentNode, children: nodeMap{}}
 			currentNode.children.Store(child, newNode)
 			currentNode = newNode
@@ -104,7 +107,10 @@ func (st *subsctable) IncreaseSubscriber(topic string) error {
 			currentNode.parent.UnsubscribeChildrenTopics(st.client)
 		}
 	}
-	fmt.Printf("IncreaseSubscriber() currentNode: %v", currentNode)
+	log.WithFields(log.Fields{
+		"root_node":    fmt.Sprint(st.rootNode),
+		"current_node": fmt.Sprint(currentNode),
+	}).Debug("End IncreaseSubscriber()")
 	return nil
 }
 
@@ -156,8 +162,11 @@ func (st *subsctable) DecreaseSubscriber(topic string) error {
 			return token.Error()
 		}
 	}
-	fmt.Printf("DecreaseSubscriber() currentNode: %v", currentNode)
-	fmt.Printf("DecreaseSubscriber() activeWildcardNode: %v", activeWildcardNode)
+	log.WithFields(log.Fields{
+		"root_node":            fmt.Sprint(st.rootNode),
+		"current_node":         fmt.Sprint(currentNode),
+		"active_wildcard_node": fmt.Sprint(activeWildcardNode),
+	}).Debug("End DecreaseSubscriber()")
 	return nil
 }
 
