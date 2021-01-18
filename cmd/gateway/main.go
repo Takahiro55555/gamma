@@ -14,6 +14,12 @@ func init() {
 	setReportCaller := flag.Bool("caller", false, "ログに行番号を表示する")
 	flag.Parse()
 
+	// 標準エラー出力でなく標準出力とする
+	log.SetOutput(os.Stdout)
+
+	// ログに行番号を表示する
+	log.SetReportCaller(*setReportCaller)
+
 	switch *environment {
 	case "production":
 		log.SetFormatter(&log.JSONFormatter{})
@@ -24,12 +30,6 @@ func init() {
 		log.WithFields(log.Fields{"environment": *environment}).Fatal("Undefined environment")
 	}
 	log.WithFields(log.Fields{"environment": *environment}).Info()
-
-	// 標準エラー出力でなく標準出力とする
-	log.SetOutput(os.Stdout)
-
-	// ログに行番号を表示する
-	log.SetReportCaller(*setReportCaller)
 
 	switch *logLevel {
 	case "trace":
