@@ -3,11 +3,11 @@ package broker
 import (
 	"fmt"
 	"gateway/pkg/subsctable"
-	"log"
 	"sync"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	log "github.com/sirupsen/logrus"
 )
 
 //////////////  　    以下 broker 構造体関連  　    //////////////
@@ -61,7 +61,7 @@ func (b *broker) Publish(topic string, retained bool, payload interface{}) {
 	token := b.Client.Publish(topic, b.qos, retained, payload)
 	token.Wait()
 	if token.Error() != nil {
-		log.Fatal(token.Error())
+		log.WithFields(log.Fields{"error": token.Error()}).Fatal("MQTT publish error")
 	}
 	b.UpdateLastPub()
 }

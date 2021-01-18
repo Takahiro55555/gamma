@@ -2,12 +2,13 @@ package subsctable
 
 import (
 	"fmt"
-	"log"
 	"reflect"
 	"regexp"
 	"sort"
 	"strings"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
@@ -192,8 +193,9 @@ func (s *nodeMap) Keys() []string {
 	s.s.Range(func(key, _ interface{}) bool {
 		k, ok := key.(string)
 		if !ok {
-			log.Fatal(StoredTypeIsInvalidError{Msg: fmt.Sprintf("Key type is invalid (expected = %T)", "")})
-			return true
+			log.WithFields(log.Fields{
+				"error": StoredTypeIsInvalidError{Msg: fmt.Sprintf("Key type is invalid (expected = %T)", "")},
+			}).Fatal("Stored key type is invalid")
 		}
 		ks = append(ks, k)
 		return true
@@ -282,11 +284,10 @@ func (s *node) SubscribeChildrenTopics(c mqtt.Client, qos byte, callback mqtt.Me
 	if s.HasActiveWildcardNode() {
 		n, err := s.children.Load("#")
 		if err != nil {
-			log.Fatal(err)
-			return
+			log.WithFields(log.Fields{"error": err}).Fatal()
 		}
 		if token := c.Subscribe(n.topic, qos, callback); token.Wait() && token.Error() != nil {
-			log.Fatalf("Mqtt error: %s", token.Error())
+			log.WithFields(log.Fields{"error": token.Error()}).Fatal("MQTT subscribe error")
 		}
 		return
 	}
@@ -294,7 +295,7 @@ func (s *node) SubscribeChildrenTopics(c mqtt.Client, qos byte, callback mqtt.Me
 	// 子ノードに有効なワイルドカードノードが存在しない場合は、自身のトピックの Subscribe を試行する
 	if s.GetSubCnt() > 0 {
 		if token := c.Subscribe(s.topic, qos, callback); token.Wait() && token.Error() != nil {
-			log.Fatalf("Mqtt error: %s", token.Error())
+			log.WithFields(log.Fields{"error": token.Error()}).Fatal("MQTT subscribe error")
 		}
 	}
 
@@ -303,7 +304,7 @@ func (s *node) SubscribeChildrenTopics(c mqtt.Client, qos byte, callback mqtt.Me
 	for _, k := range keys {
 		n, err := s.children.Load(k)
 		if err != nil {
-			log.Fatal(err)
+			log.WithFields(log.Fields{"error": err}).Error("")
 			continue
 		}
 
@@ -323,14 +324,13 @@ func (s *node) UnsubscribeChildrenTopics(c mqtt.Client) {
 		}
 		n, err := s.children.Load(k)
 		if err != nil {
-			log.Fatal(err)
+			log.WithFields(log.Fields{"error": err}).Error("")
 			continue
 		}
 		// Unsubscribe する
 		if n.GetSubCnt() > 0 {
 			if token := c.Unsubscribe(n.topic); token.Wait() && token.Error() != nil {
-				log.Fatalf("Mqtt error: %s", token.Error())
-				return
+				log.WithFields(log.Fields{"error": token.Error()}).Fatal("MQTT unsubscribe error")
 			}
 		}
 		// 再帰関数に渡す
@@ -345,13 +345,13 @@ func (s *node) unsubscribeAllChildrenTopics(c mqtt.Client) {
 	for _, k := range keys {
 		n, err := s.children.Load(k)
 		if err != nil {
-			log.Fatal(err)
+			log.WithFields(log.Fields{"error": err}).Error("")
 			continue
 		}
 		// Unsubscribe する
 		if n.topic != "" && n.GetSubCnt() > 0 {
 			if token := c.Unsubscribe(n.topic); token.Wait() && token.Error() != nil {
-				log.Fatalf("Mqtt error: %s", token.Error())
+				log.WithFields(log.Fields{"error": token.Error()}).Fatal("MQTT unsubscribe error")
 				return
 			}
 		}

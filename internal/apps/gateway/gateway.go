@@ -4,27 +4,38 @@ import (
 	"fmt"
 	"gateway/pkg/brokerpool"
 	"gateway/pkg/brokertable"
-	"log"
+
 	"os"
 	"os/signal"
 	"regexp"
 	"strings"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	log "github.com/sirupsen/logrus"
 )
 
 func Entrypoint() {
+	//////////////        APIブローカへ接続するための準備        //////////////
+	apiBroker := "tcp://127.0.0.1:1883"
+	opts := mqtt.NewClientOptions()
+	opts.AddBroker(apiBroker)
+
+	// APIブローカへ接続
+	apiClient := mqtt.NewClient(opts)
+	if token := apiClient.Connect(); token.Wait() && token.Error() != nil {
+		log.WithFields(log.Fields{"error": token.Error()}).Fatal("MQTT connect error")
+	}
+	defer apiClient.Disconnect(1000)
 
 	//////////////    ゲートウェイブローカへ接続するための準備    //////////////
-	gatewayBroker := "tcp://127.0.0.1:1883"
-	opts := mqtt.NewClientOptions()
+	gatewayBroker := "tcp://127.0.0.1:1884"
+	opts = mqtt.NewClientOptions()
 	opts.AddBroker(gatewayBroker)
 
 	// ゲートウェイブローカへ接続
 	gatewayClient := mqtt.NewClient(opts)
 	if token := gatewayClient.Connect(); token.Wait() && token.Error() != nil {
-		log.Fatalf("Mqtt error: %s", token.Error())
-		return
+		log.WithFields(log.Fields{"error": token.Error()}).Fatal("MQTT connect error")
 	}
 	defer gatewayClient.Disconnect(1000)
 
@@ -35,9 +46,8 @@ func Entrypoint() {
 	var fRegisterMsg mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 		apiRegisterMsgCh <- msg
 	}
-	if subscribeToken := gatewayClient.Subscribe("/api/register", 0, fRegisterMsg); subscribeToken.Wait() && subscribeToken.Error() != nil {
-		log.Fatal(subscribeToken.Error())
-		return
+	if token := gatewayClient.Subscribe("/api/register", 0, fRegisterMsg); token.Wait() && token.Error() != nil {
+		log.WithFields(log.Fields{"error": token.Error()}).Fatal("MQTT subscribe error")
 	}
 
 	// Subscribe 解除するためのトピック
@@ -45,9 +55,8 @@ func Entrypoint() {
 	var fUnregisterMsg mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 		apiUnregisterMsgCh <- msg
 	}
-	if subscribeToken := gatewayClient.Subscribe("/api/unregister", 0, fUnregisterMsg); subscribeToken.Wait() && subscribeToken.Error() != nil {
-		log.Fatal(subscribeToken.Error())
-		return
+	if token := gatewayClient.Subscribe("/api/unregister", 0, fUnregisterMsg); token.Wait() && token.Error() != nil {
+		log.WithFields(log.Fields{"error": token.Error()}).Fatal("MQTT subscribe error")
 	}
 
 	// ゲートウェイブローカ ==> このプログラム ==> 当該分散ブローカへメッセージを転送するためのトピック
@@ -55,9 +64,8 @@ func Entrypoint() {
 	var fForwardMsg mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 		apiMsgChForwardToDistributedBroker <- msg
 	}
-	if subscribeToken := gatewayClient.Subscribe("/forward/#", 0, fForwardMsg); subscribeToken.Wait() && subscribeToken.Error() != nil {
-		log.Fatal(subscribeToken.Error())
-		return
+	if token := gatewayClient.Subscribe("/forward/#", 0, fForwardMsg); token.Wait() && token.Error() != nil {
+		log.WithFields(log.Fields{"error": token.Error()}).Fatal("MQTT subscribe error")
 	}
 
 	// プルグラムを強制終了させるためのチャンネル
@@ -89,12 +97,12 @@ func Entrypoint() {
 			fmt.Println(editedTopic)
 			host, port, err := brokertable.LookupHost(rootNode, editedTopic)
 			if err != nil {
-				log.Fatal(err)
+				log.WithFields(log.Fields{"topic": topic, "error": err}).Error("Brokertable LookupHost error")
 				continue
 			}
 			b, err := bp.GetOrConnectBroker(host, port)
 			if err != nil {
-				log.Fatal(err)
+				log.WithFields(log.Fields{"host": host, "port": port, "error": err}).Error("Brokerpool GetOrConnectBroker error")
 				continue
 			}
 			b.Subscribe(topic)
@@ -108,12 +116,12 @@ func Entrypoint() {
 			fmt.Println(editedTopic)
 			host, port, err := brokertable.LookupHost(rootNode, editedTopic)
 			if err != nil {
-				log.Fatal(err)
+				log.WithFields(log.Fields{"topic": topic, "error": err}).Error("Brokertable LookupHost error")
 				continue
 			}
 			b, err := bp.GetOrConnectBroker(host, port)
 			if err != nil {
-				log.Fatal(err)
+				log.WithFields(log.Fields{"host": host, "port": port, "error": err}).Error("Brokerpool GetOrConnectBroker error")
 				continue
 			}
 			b.Unsubscribe(topic)
@@ -129,18 +137,18 @@ func Entrypoint() {
 			topic := strings.Replace(m.Topic(), "/forward", "", 1)
 			host, port, err := brokertable.LookupHost(rootNode, topic)
 			if err != nil {
-				log.Fatal(err)
+				log.WithFields(log.Fields{"topic": topic, "error": err}).Error("Brokertable LookupHost error")
 				continue
 			}
 			b, err := bp.GetOrConnectBroker(host, port)
 			if err != nil {
-				log.Fatal(err)
+				log.WithFields(log.Fields{"host": host, "port": port, "error": err}).Error("Brokerpool GetOrConnectBroker error")
 				continue
 			}
 			b.Publish(topic, false, m.Payload())
 
 		case <-signalCh:
-			fmt.Printf("\nInterrupt detected.\n")
+			log.Info("Interrupt detected.\n")
 			return
 		}
 	}

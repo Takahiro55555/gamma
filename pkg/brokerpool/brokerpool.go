@@ -3,12 +3,12 @@ package brokerpool
 import (
 	"fmt"
 	"gateway/pkg/broker"
-	"log"
 	"reflect"
 	"sync"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	log "github.com/sirupsen/logrus"
 )
 
 //////////////  　  以下 brokerpool 構造体関連  　  //////////////
@@ -167,8 +167,9 @@ func (t *BrokersTableByHost) closeAllBroker(quiesce uint) {
 	t.t.Range(func(_, v interface{}) bool {
 		t, ok := v.(*BrokerTableByPort)
 		if !ok {
-			log.Fatal(StoredTypeIsInvalidError{Msg: fmt.Sprintf("Stored type is invalid (expected = %T, result = %T)", BrokerTableByPort{}, v)})
-			return true
+			log.WithFields(log.Fields{
+				"error": StoredTypeIsInvalidError{Msg: fmt.Sprintf("Stored type is invalid (expected = %T, result = %T)", BrokerTableByPort{}, v)},
+			}).Fatal("Stored data type is invalid")
 		}
 		t.closeAllBroker(quiesce)
 		return true
@@ -211,8 +212,9 @@ func (t *BrokerTableByPort) closeAllBroker(quiesce uint) {
 	t.t.Range(func(key, v interface{}) bool {
 		b, ok := v.(broker.Broker)
 		if !ok {
-			log.Fatal(StoredTypeIsInvalidError{Msg: fmt.Sprintf("Stored type is invalid (expected = %T, result = %T)", BrokerTableByPort{}, v)})
-			return true
+			log.WithFields(log.Fields{
+				"error": StoredTypeIsInvalidError{Msg: fmt.Sprintf("Stored type is invalid (expected = %T, result = %T)", BrokerTableByPort{}, v)},
+			}).Fatal("Stored data type is invalid")
 		}
 		b.Disconnect(quiesce)
 		t.t.Delete(key)
