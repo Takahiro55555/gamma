@@ -24,9 +24,13 @@ func init() {
 	case "production":
 		log.SetFormatter(&log.JSONFormatter{})
 	case "development":
-		log.SetFormatter(&log.TextFormatter{})
+		log.SetFormatter(&log.TextFormatter{
+			FullTimestamp: true,
+		})
 	default:
-		log.SetFormatter(&log.TextFormatter{})
+		log.SetFormatter(&log.TextFormatter{
+			FullTimestamp: true,
+		})
 		log.WithFields(log.Fields{"environment": *environment}).Fatal("Undefined environment")
 	}
 	log.WithFields(log.Fields{"environment": *environment}).Info()
@@ -54,5 +58,5 @@ func init() {
 }
 
 func main() {
-	gateway.Entrypoint()
+	gateway.Gateway()
 }
