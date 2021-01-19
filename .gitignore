@@ -1,0 +1,8 @@
+.DS_Store
+
+.vscode/
+
+*.out
+*.exe
+
+cover.html
