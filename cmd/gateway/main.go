@@ -33,7 +33,6 @@ func init() {
 		})
 		log.WithFields(log.Fields{"environment": *environment}).Fatal("Undefined environment")
 	}
-	log.WithFields(log.Fields{"environment": *environment}).Info()
 
 	switch *logLevel {
 	case "trace":
@@ -54,6 +53,7 @@ func init() {
 		log.SetLevel(log.DebugLevel)
 		log.WithFields(log.Fields{"level": *logLevel}).Fatal("Undefined log level")
 	}
+	log.WithFields(log.Fields{"environment": *environment}).Info()
 	log.WithFields(log.Fields{"level": *logLevel}).Info()
 }
 
