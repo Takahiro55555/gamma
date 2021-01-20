@@ -51,6 +51,7 @@ func ConnectBroker(host string, port uint16, qos byte, ch chan<- mqtt.Message) (
 	opts.AddBroker(fmt.Sprintf("tcp://%v:%v", host, port))
 	c := mqtt.NewClient(opts)
 	if token := c.Connect(); token.Wait() && token.Error() != nil {
+		log.WithFields(log.Fields{"func": "ConnectBroker", "error": token.Error()}).Debug("Connect error")
 		return nil, token.Error()
 	}
 	b := NewBroker(c, qos, ch)
@@ -61,7 +62,7 @@ func (b *broker) Publish(topic string, retained bool, payload interface{}) {
 	token := b.Client.Publish(topic, b.qos, retained, payload)
 	token.Wait()
 	if token.Error() != nil {
-		log.WithFields(log.Fields{"error": token.Error()}).Fatal("MQTT publish error")
+		log.WithFields(log.Fields{"error": token.Error()}).Error("MQTT publish error")
 	}
 	b.UpdateLastPub()
 }
@@ -77,17 +78,23 @@ func (b *broker) Unsubscribe(topic string) error {
 }
 
 func (b *broker) TryDisconnect(expirationFromLastPub time.Duration, quiesce uint) bool {
+	opt := b.Client.OptionsReader()
 	if b.GetSubCnt() != 0 {
+		log.WithFields(log.Fields{"servers": opt.Servers()}).Debug("TryDisconnect()")
 		return false
 	}
 	if b.GetLastPub().Add(expirationFromLastPub).After(time.Now()) {
+		log.WithFields(log.Fields{"servers": opt.Servers()}).Debug("TryDisconnect()")
 		return false
 	}
+	log.WithFields(log.Fields{"servers": opt.Servers()}).Debug("TryDisconnect()")
 	b.Client.Disconnect(quiesce)
 	return true
 }
 
 func (b *broker) Disconnect(quiesce uint) {
+	opt := b.Client.OptionsReader()
+	log.WithFields(log.Fields{"servers": opt.Servers()}).Debug("Disconnect()")
 	b.Client.Disconnect(quiesce)
 	b.SubCnt = 0
 	b.LastPub = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC) // Unix time の基準日

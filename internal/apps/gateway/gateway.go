@@ -95,10 +95,10 @@ func Gateway() {
 	// 分散ブローカ接続情報管理オブジェクト
 	rootNode := &brokertable.Node{}
 	brokertable.UpdateHost(rootNode, "/", "localhost", 1893)
-	brokertable.UpdateHost(rootNode, "/2/2/0/2/2/1/0/2/0", "localhost", 1894)
-	brokertable.UpdateHost(rootNode, "/2/2/0/2/2/1/0/2/1", "localhost", 1895)
-	brokertable.UpdateHost(rootNode, "/2/2/0/2/2/1/0/2/2", "localhost", 1896)
-	brokertable.UpdateHost(rootNode, "/2/2/0/2/2/1/0/2/3", "localhost", 1897)
+	brokertable.UpdateHost(rootNode, "/1/2/2/3/3/2/0/0", "localhost", 1894)
+	brokertable.UpdateHost(rootNode, "/1/2/2/3/3/2/0/1", "localhost", 1895)
+	brokertable.UpdateHost(rootNode, "/1/2/2/3/3/2/0/2", "localhost", 1896)
+	brokertable.UpdateHost(rootNode, "/1/2/2/3/3/2/0/3", "localhost", 1897)
 
 	// 分散ブローカ ==> このプログラム ==> ゲートウェイブローカへ転送するためのチャンネル
 	apiMsgForwardToGatewayBrokerCh := make(chan mqtt.Message, 100)
@@ -147,10 +147,10 @@ func Gateway() {
 
 		// Client からの Unsubscribe リクエストを処理する
 		case m := <-apiUnregisterMsgCh:
-			apiUnregisterMsgMetrics.Countup()
 			topic := string(m.Payload())
 			editedTopic := strings.Replace(topic, "/#", "", 1)
 			log.WithFields(log.Fields{"topic": editedTopic}).Trace("apiUnregisterMsgCh")
+			apiUnregisterMsgMetrics.Countup()
 			host, port, err := brokertable.LookupHost(rootNode, editedTopic)
 			if err != nil {
 				log.WithFields(log.Fields{"topic": topic, "error": err}).Error("Brokertable LookupHost error")
@@ -171,8 +171,8 @@ func Gateway() {
 
 		// ゲートウェイブローカ ==> このプログラム ==> 当該分散ブローカへ転送する
 		case m := <-apiMsgForwardToDistributedBrokerCh:
+			log.WithFields(log.Fields{"topic": m.Topic(), "payload": string(m.Payload())}).Trace("apiMsgForwardToDistributedBrokerCh")
 			apiMsgForwardToDistributedBrokerMetrics.Countup()
-			log.WithFields(log.Fields{"topic": m.Topic(), "payload": string(m.Payload())}).Trace("apiMsgForwardToDistributedBroker")
 			topic := strings.Replace(m.Topic(), "/forward", "", 1)
 			host, port, err := brokertable.LookupHost(rootNode, topic)
 			if err != nil {
@@ -187,6 +187,7 @@ func Gateway() {
 			b.Publish(topic, false, m.Payload())
 
 		case <-metricsTicker.C:
+			log.Trace("metricsTicker.C")
 			for _, m := range metricsList {
 				ok, rate, name := m.GetRate()
 				if ok {
