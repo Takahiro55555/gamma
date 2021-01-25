@@ -7,6 +7,180 @@ import (
 	"testing"
 )
 
+func TestLookupAllHost(t *testing.T) {
+	type args struct {
+		node  *brokertable.Node
+		topic string
+	}
+	type want struct {
+		host []brokertable.Host
+		err  error
+	}
+	tests := []struct {
+		name string
+		args args
+		want want
+	}{
+		{
+			name: "Success basic 01",
+			args: args{
+				node: &brokertable.Node{
+					Children: map[string]*brokertable.Node{},
+					Host:     "127.0.0.1",
+					Port:     5000,
+				},
+				topic: "/",
+			},
+			want: want{
+				host: []brokertable.Host{
+					{
+						Host: "127.0.0.1",
+						Port: 5000,
+					},
+				},
+				err: nil,
+			},
+		},
+		{
+			name: "Success basic 02",
+			args: args{
+				node: &brokertable.Node{
+					Children: map[string]*brokertable.Node{
+						"0": {
+							Children: map[string]*brokertable.Node{
+								"1": {
+									Children: map[string]*brokertable.Node{
+										"2": {
+											Children: map[string]*brokertable.Node{},
+											Host:     "mqtt03.example.com",
+											Port:     5003,
+										},
+									},
+									Host: "mqtt02.example.com",
+									Port: 5002,
+								},
+							},
+							Host: "mqtt01.example.com",
+							Port: 5001,
+						},
+					},
+					Host: "mqtt00.example.com",
+					Port: 5000,
+				},
+				topic: "/1",
+			},
+			want: want{
+				host: []brokertable.Host{
+					{
+						Host: "mqtt00.example.com",
+						Port: 5000,
+					},
+					{
+						Host: "mqtt01.example.com",
+						Port: 5001,
+					},
+					{
+						Host: "mqtt02.example.com",
+						Port: 5002,
+					},
+					{
+						Host: "mqtt03.example.com",
+						Port: 5003,
+					},
+				},
+				err: nil,
+			},
+		},
+		{
+			name: "Success basic 03",
+			args: args{
+				node: &brokertable.Node{
+					Children: map[string]*brokertable.Node{
+						"0": {
+							Children: map[string]*brokertable.Node{
+								"1": {
+									Children: map[string]*brokertable.Node{
+										"2": {
+											Children: map[string]*brokertable.Node{
+												"3": {
+													Host: "mqtt04.example.com",
+													Port: 5004,
+												},
+											},
+											Host: "mqtt03.example.com",
+											Port: 5003,
+										},
+									},
+									Host: "mqtt02.example.com",
+									Port: 5002,
+								},
+							},
+							Host: "mqtt01.example.com",
+							Port: 5001,
+						},
+					},
+					Host: "mqtt00.example.com",
+					Port: 5000,
+				},
+				topic: "/0/1/2",
+			},
+			want: want{
+				host: []brokertable.Host{
+					{
+						Host: "mqtt03.example.com",
+						Port: 5003,
+					},
+					{
+						Host: "mqtt04.example.com",
+						Port: 5004,
+					},
+				},
+				err: nil,
+			},
+		},
+		{
+			name: "Invalid topic 01",
+			args: args{
+				node: &brokertable.Node{
+					Children: map[string]*brokertable.Node{},
+					Host:     "example.com",
+					Port:     5000,
+				},
+				topic: "/hoge",
+			},
+			want: want{
+				host: []brokertable.Host{
+					{
+						Host: "example.com",
+						Port: 5000,
+					},
+				},
+				err: brokertable.TopicNameError{},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			host, err := brokertable.LookupSubsetHosts(tt.args.node, tt.args.topic)
+			if tt.want.err == nil {
+				/** エラーを期待しないテストケース **/
+				if err != tt.want.err {
+					t.Errorf("LookupHost() = %v (Type: %T), expected %v (Type: %T)", err, err, tt.want.err, tt.want.err)
+				}
+			} else {
+				/** エラーを期待するテストケース **/
+				if err == nil || reflect.ValueOf(err).Type() != reflect.ValueOf(tt.want.err).Type() {
+					t.Errorf("LookupHost() = %v (Type: %T), expected %v (Type: %T)", err, err, tt.want.err, tt.want.err)
+				}
+			}
+			/** host の確認 **/
+			if fmt.Sprint(host) != fmt.Sprint(tt.want.host) {
+				t.Errorf("LookupHost(); host = %v, expected %v", host, tt.want.host)
+			}
+		})
+	}
+}
+
 func TestLookupHost(t *testing.T) {
 	type args struct {
 		node  *brokertable.Node
@@ -49,25 +223,25 @@ func TestLookupHost(t *testing.T) {
 									Children: map[string]*brokertable.Node{
 										"2": {
 											Children: map[string]*brokertable.Node{},
-											Host:     "localhost",
+											Host:     "mqtt03.example.com",
 											Port:     5003,
 										},
 									},
-									Host: "localhost",
+									Host: "mqtt02.example.com",
 									Port: 5002,
 								},
 							},
-							Host: "localhost",
+							Host: "mqtt01.example.com",
 							Port: 5001,
 						},
 					},
-					Host: "localhost",
+					Host: "mqtt00.example.com",
 					Port: 5000,
 				},
 				topic: "/1",
 			},
 			want: want{
-				host: "localhost",
+				host: "mqtt00.example.com",
 				port: 5000,
 				err:  nil,
 			},
@@ -83,25 +257,25 @@ func TestLookupHost(t *testing.T) {
 									Children: map[string]*brokertable.Node{
 										"2": {
 											Children: map[string]*brokertable.Node{},
-											Host:     "localhost",
+											Host:     "mqtt03.example.com",
 											Port:     5003,
 										},
 									},
-									Host: "localhost",
+									Host: "mqtt02.example.com",
 									Port: 5002,
 								},
 							},
-							Host: "localhost",
+							Host: "mqtt01.example.com",
 							Port: 5001,
 						},
 					},
-					Host: "localhost",
+					Host: "mqtt00.example.com",
 					Port: 5000,
 				},
 				topic: "/0/1/2",
 			},
 			want: want{
-				host: "localhost",
+				host: "mqtt03.example.com",
 				port: 5003,
 				err:  nil,
 			},
