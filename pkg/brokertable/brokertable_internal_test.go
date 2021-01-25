@@ -1,4 +1,4 @@
-package lookuptable
+package brokertable
 
 import (
 	"reflect"

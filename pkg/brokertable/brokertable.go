@@ -1,15 +1,44 @@
-package lookuptable
+package brokertable
 
 import (
 	"fmt"
 	"regexp"
-	"strings"
 	"sort"
+	"strings"
 )
 
-func LookupHost(root *Node, topic string) (string, uint16, error) {
+//////////////        以下、Brokertable 関連              //////////////
+
+func LookupSubsetHosts(root *Node, topic string) ([]Host, error) {
+	n, err := LookupNode(root, topic)
+	if err != nil {
+		return []Host{{Host: root.Host, Port: root.Port}}, err
+	}
+
+	return lookupAllHosts(n, make(map[string]bool)), nil
+}
+
+func lookupAllHosts(root *Node, flag map[string]bool) []Host {
+	hosts := []Host{}
+
+	currentNode := root
+	key := fmt.Sprintf("%s:%d", currentNode.Host, currentNode.Port)
+	if !flag[key] {
+		flag[key] = true
+		hosts = append(hosts, Host{Host: currentNode.Host, Port: currentNode.Port})
+	}
+
+	for _, k := range keys(root.Children) {
+		newHosts := lookupAllHosts(root.Children[k], flag)
+		hosts = append(hosts, newHosts...)
+	}
+
+	return hosts
+}
+
+func LookupNode(root *Node, topic string) (*Node, error) {
 	if err := validateTopic(topic); err != nil {
-		return root.Host, root.Port, err
+		return root, err
 	}
 	currentNode := root
 	if topic != "/" {
@@ -24,9 +53,19 @@ func LookupHost(root *Node, topic string) (string, uint16, error) {
 			currentNode = n
 		}
 	}
-	return currentNode.Host, currentNode.Port, nil
+	return currentNode, nil
 }
 
+// LookupHost 関数は、トピック名から担当している分散ブローカのホスト名とポート番号を検索する
+func LookupHost(root *Node, topic string) (string, uint16, error) {
+	n, err := LookupNode(root, topic)
+	return n.Host, n.Port, err
+}
+
+// FIXME: 動的な分散ブローカの追加、削除には未対応（Broker.SubCntの引継ぎを何も考えていない）
+// UpdateHost 関数は、トピック名とそれに対応する分散ブローカへの接続情報を更新する
+// 更新の際、当該トピックより深いレベルの分散ブローカへの接続情報は削除される。
+// そのため、更新処理の順序に気を付けること
 func UpdateHost(root *Node, topic string, host string, port uint16) error {
 	if err := validateTopic(topic); err != nil {
 		return err
@@ -73,7 +112,7 @@ func validateTopic(topic string) error {
 	if rTopic.MatchString(topic) {
 		return nil
 	}
-	return TopicNameError{Msg: "Invalid topic name. Allowed topic name`s regular expressions is '^/[0-9]+(/[0-3])*$' ."}
+	return TopicNameError{Msg: fmt.Sprintf("Invalid topic name(%v). Allowed topic name`s regular expressions is '^/([0-9]+(/[0-3])*)?$' .", topic)}
 }
 
 func validateHost(host string) error {
@@ -96,7 +135,14 @@ func validateHost(host string) error {
 	return HostError{Msg: "Invalid host. Allowed 'host' formats are IPv4 address, domain name or 'localhost'."}
 }
 
-/** 構造体 **/
+//////////////        以上、Brokertable 関連              //////////////
+//////////////            以下、Node 関連                 //////////////
+
+type Host struct {
+	Host string
+	Port uint16
+}
+
 type Node struct {
 	Children map[string]*Node
 	Host     string
@@ -133,7 +179,9 @@ func keys(m map[string]*Node) []string {
 	return ks
 }
 
-/** エラー構造体 **/
+//////////////            以上、Node 関連                 //////////////
+//////////////           以下、エラー 関連                 //////////////
+
 type TopicNameError struct {
 	Msg string
 }
@@ -149,3 +197,5 @@ type HostError struct {
 func (e HostError) Error() string {
 	return fmt.Sprintf("Error: %v", e.Msg)
 }
+
+//////////////           以上、エラー 関連                 //////////////

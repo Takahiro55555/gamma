@@ -6,3 +6,4 @@
 *.exe
 
 go.sum
+cover.html
