@@ -23,6 +23,9 @@ type Broker interface {
 	GetSubCnt() uint
 	UpdateLastPub()
 	GetLastPub() time.Time
+	CreateSubsetBroker(host string, port uint16, qos byte, ch chan<- mqtt.Message, topic string) (Broker, error)
+	SubscribeAll()
+	UnsubscribeSubsetTopics(topic string) error
 }
 
 // 分散ブローカに関するデータを管理する構造体
@@ -44,15 +47,56 @@ func NewBroker(c mqtt.Client, qos byte, ch chan<- mqtt.Message) Broker {
 		qos:     qos,
 		subTb:   subsctable.NewSubsctable(c, qos, ch),
 	}
+
 }
 
-func ConnectBroker(host string, port uint16, qos byte, ch chan<- mqtt.Message) (Broker, error) {
+func (b *broker) getQos() byte {
+	return b.qos
+}
+
+func (b *broker) CreateSubsetBroker(host string, port uint16, qos byte, ch chan<- mqtt.Message, topic string) (Broker, error) {
+	c, err := connectBroker(host, port, ch)
+	if err != nil {
+		return nil, err
+	}
+
+	subTb, err := b.subTb.GetSubsetSubsctable(c, qos, ch, topic)
+	if err != nil {
+		return nil, err
+	}
+
+	return &broker{
+		Client:  c,
+		SubCnt:  0,
+		LastPub: time.Now(),
+		qos:     qos,
+		subTb:   subTb,
+	}, nil
+}
+
+func (b *broker) SubscribeAll() {
+	b.subTb.SubscribeAll()
+}
+
+func (b *broker) UnsubscribeSubsetTopics(topic string) error {
+	return b.subTb.UnsubscribeSubsetTopics(topic)
+}
+
+func connectBroker(host string, port uint16, ch chan<- mqtt.Message) (mqtt.Client, error) {
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("tcp://%v:%v", host, port))
 	c := mqtt.NewClient(opts)
 	if token := c.Connect(); token.Wait() && token.Error() != nil {
 		log.WithFields(log.Fields{"func": "ConnectBroker", "error": token.Error()}).Debug("Connect error")
 		return nil, token.Error()
+	}
+	return c, nil
+}
+
+func ConnectBroker(host string, port uint16, qos byte, ch chan<- mqtt.Message) (Broker, error) {
+	c, err := connectBroker(host, port, ch)
+	if err != nil {
+		return nil, err
 	}
 	b := NewBroker(c, qos, ch)
 	return b, nil

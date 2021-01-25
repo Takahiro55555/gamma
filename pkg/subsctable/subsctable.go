@@ -19,6 +19,10 @@ type Subsctable interface {
 	String() string
 	IncreaseSubscriber(topic string) error
 	DecreaseSubscriber(topic string) error
+	GetSubsetSubsctable(c mqtt.Client, qos byte, ch chan<- mqtt.Message, topic string) (Subsctable, error)
+	SubscribeAll()
+	UnsubscribeSubsetTopics(topic string) error
+	getRootNode() *node
 }
 
 type subsctable struct {
@@ -42,6 +46,120 @@ func validateTopic(topic string) error {
 
 func NewSubsctable(c mqtt.Client, qos byte, ch chan<- mqtt.Message) Subsctable {
 	return &subsctable{rootNode: &node{children: nodeMap{}}, client: c, qos: qos, msgCh: ch}
+}
+
+func (st *subsctable) getRootNode() *node {
+	return st.rootNode
+}
+
+// GetSubset 関数は、与えられたトピック以下の Subsctable を返す
+// 新たな分散ブローカが追加された際に使用する
+func (st *subsctable) GetSubsetSubsctable(c mqtt.Client, qos byte, ch chan<- mqtt.Message, topic string) (Subsctable, error) {
+	// トピック名の前処理
+	err := validateTopic(topic)
+	if err != nil {
+		return nil, err
+	}
+	rep := regexp.MustCompile(`^/`) // 先頭の "/" が邪魔なため、削除
+	editedTopic := rep.ReplaceAllString(topic, "")
+	editedTopic = strings.Replace(editedTopic, "/#", "", 1) // ワイルドカードがあると都合が悪いため削除
+	topicSlice := strings.Split(editedTopic, "/")
+
+	newSubsctable := NewSubsctable(c, qos, ch)
+	newRootNode := newSubsctable.getRootNode()
+	oldRootNode := st.getRootNode()
+
+	// NOTE: 以下のループに当たるトピック名は新たな Subsctable の担当ではないことに注意
+	currentNewNode := newRootNode
+	currentOldNode := oldRootNode
+	typeNotFoundErr := reflect.ValueOf(NotFoundError{}).Type()
+	for i, child := range topicSlice {
+		// currentOldNode の更新
+		tmpNode, err := currentOldNode.children.Load(child)
+		// 子ノードが存在しない場合は、追加する
+		if err == nil {
+			currentOldNode = tmpNode
+		} else if reflect.ValueOf(err).Type() == typeNotFoundErr {
+			log.WithFields(log.Fields{
+				"root_node":    fmt.Sprint(st.rootNode),
+				"current_node": fmt.Sprint(currentOldNode),
+				"children":     child,
+			}).Debug("Add children")
+			newNode := &node{parent: currentOldNode, children: nodeMap{}}
+			currentOldNode.children.Store(child, newNode)
+			currentOldNode = newNode
+		} else if err != nil {
+			return nil, err
+		}
+
+		if i == len(topicSlice)-1 {
+			currentNewNode.children.Store(child, currentOldNode)
+		} else {
+			newNode := &node{parent: currentNewNode, children: nodeMap{}}
+			currentNewNode.children.Store(child, newNode)
+			currentNewNode = newNode
+		}
+	}
+	currentNewNode.topic = topic
+
+	return newSubsctable, nil
+}
+
+func (st *subsctable) SubscribeAll() {
+	var fForwardMsg mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
+		st.msgCh <- msg
+	}
+	rootNode := st.getRootNode()
+	rootNode.SubscribeChildrenTopics(st.client, st.qos, fForwardMsg)
+}
+
+// GetSubset 関数は、与えられたトピック以下の Subsctable を返す
+// 新たな分散ブローカが追加された際に使用する
+func (st *subsctable) UnsubscribeSubsetTopics(topic string) error {
+	// トピック名の前処理
+	err := validateTopic(topic)
+	if err != nil {
+		return err
+	}
+	rep := regexp.MustCompile(`^/`) // 先頭の "/" が邪魔なため、削除
+	editedTopic := rep.ReplaceAllString(topic, "")
+	editedTopic = strings.Replace(editedTopic, "/#", "", 1) // ワイルドカードがあると都合が悪いため削除
+	topicSlice := strings.Split(editedTopic, "/")
+
+	oldRootNode := st.getRootNode()
+
+	// NOTE: 以下のループに当たるトピック名は新たな Subsctable の担当ではないことに注意
+	currentNode := oldRootNode
+	typeNotFoundErr := reflect.ValueOf(NotFoundError{}).Type()
+	for _, child := range topicSlice {
+		// currentNode の更新
+		tmpNode, err := currentNode.children.Load(child)
+		// 子ノードが存在しない場合は、追加する
+		if err == nil {
+			currentNode = tmpNode
+		} else if reflect.ValueOf(err).Type() == typeNotFoundErr {
+			log.WithFields(log.Fields{
+				"root_node":    fmt.Sprint(st.rootNode),
+				"current_node": fmt.Sprint(currentNode),
+				"children":     child,
+			}).Debug("Not found children")
+			return nil
+		} else if err != nil {
+			return err
+		}
+	}
+
+	// Unsubscribe する
+	if currentNode.topic != "" && currentNode.GetSubCnt() > 0 {
+		if token := st.client.Unsubscribe(currentNode.topic); token.Wait() && token.Error() != nil {
+			log.WithFields(log.Fields{"error": token.Error()}).Fatal("MQTT unsubscribe error")
+			return token.Error()
+		}
+	}
+	// 再帰関数に渡す
+	currentNode.unsubscribeAllChildrenTopics(st.client)
+
+	return nil
 }
 
 func (st *subsctable) IncreaseSubscriber(topic string) error {

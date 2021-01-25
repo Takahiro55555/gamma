@@ -8,10 +8,16 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func init() {
+func main() {
 	environment := flag.String("env", "production", "実行環境 [\"production\", \"development\"]")
 	logLevel := flag.String("level", "warn", "ログレベル [\"trace\", \"debug\", \"info\", \"warn\", \"error\", \"fatal\", \"panic\"]")
 	setReportCaller := flag.Bool("caller", false, "ログに行番号を表示する")
+	managerMBHost := flag.String("managerHost", "localhost", "Manager MQTT broker host")
+	managerMBPort := flag.Int("managerPort", 1883, "Manager MQTT broker port")
+	gatewayMBHost := flag.String("gatewayHost", "localhost", "Gateway MQTT broker host")
+	gatewayMBPort := flag.Int("gatewayPort", 1884, "Gateway MQTT broker port")
+	defaultDMBHost := flag.String("defaultDMBHost", "localhost", "Default distributed MQTT broker host")
+	defaultDMBPort := flag.Int("defaultDMBPort", 1893, "Default distributed MQTT broker port")
 	flag.Parse()
 
 	// 標準エラー出力でなく標準出力とする
@@ -55,8 +61,12 @@ func init() {
 	}
 	log.WithFields(log.Fields{"environment": *environment}).Info()
 	log.WithFields(log.Fields{"level": *logLevel}).Info()
-}
+	log.WithFields(log.Fields{"host": *managerMBHost, "port": uint16(*managerMBPort)}).Info("Manager MQTT broker")
+	log.WithFields(log.Fields{"host": *gatewayMBHost, "port": uint16(*gatewayMBPort)}).Info("Gateway MQTT broker")
+	log.WithFields(log.Fields{"host": *defaultDMBHost, "port": uint16(*defaultDMBPort)}).Info("Default distributed MQTT broker")
 
-func main() {
-	gateway.Gateway()
+	managerMB := gateway.BrokerInfo{Host: *managerMBHost, Port: uint16(*managerMBPort)}
+	gatewayMB := gateway.BrokerInfo{Host: *gatewayMBHost, Port: uint16(*gatewayMBPort)}
+	defaultDMB := gateway.BrokerInfo{Topic: "/", Host: *defaultDMBHost, Port: uint16(*defaultDMBPort)}
+	gateway.Gateway(gatewayMB, managerMB, defaultDMB)
 }

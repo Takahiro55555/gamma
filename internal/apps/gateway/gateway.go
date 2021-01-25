@@ -1,6 +1,8 @@
 package gateway
 
 import (
+	"encoding/json"
+	"fmt"
 	"gateway/pkg/brokerpool"
 	"gateway/pkg/brokertable"
 	"gateway/pkg/metrics"
@@ -14,9 +16,16 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func Gateway() {
+type BrokerInfo struct {
+	Topic string `json:"topic"`
+	Host  string `json:"host"`
+	Port  uint16 `json:"port"`
+}
+
+func Gateway(gatewayMB, managerMB, defaultDMB BrokerInfo) {
+	startTimeUnix := time.Now().Unix()
 	//////////////          Managerブローカへ接続する           //////////////
-	managerBroker := "tcp://127.0.0.1:1883"
+	managerBroker := fmt.Sprintf("tcp://%v:%v", managerMB.Host, managerMB.Port)
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(managerBroker)
 
@@ -28,7 +37,7 @@ func Gateway() {
 	defer managerClient.Disconnect(1000)
 
 	//////////////        ゲートウェイブローカへ接続する         //////////////
-	gatewayBroker := "tcp://127.0.0.1:1884"
+	gatewayBroker := fmt.Sprintf("tcp://%v:%v", gatewayMB.Host, gatewayMB.Port)
 	opts = mqtt.NewClientOptions()
 	opts.AddBroker(gatewayBroker)
 
@@ -42,11 +51,20 @@ func Gateway() {
 	//////////////        メッセージハンドラの作成・登録         //////////////
 
 	// brokertable の更新情報を受け取るチャンネル
-	brokertableUpdateMsgCh := make(chan mqtt.Message, 10)
-	var brokertableUpdateMsgFunc mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
-		brokertableUpdateMsgCh <- msg
+	brokertableUpdateInfoMsgCh := make(chan mqtt.Message, 10)
+	var brokertableUpdateInfoMsgFunc mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
+		brokertableUpdateInfoMsgCh <- msg
 	}
-	if token := managerClient.Subscribe("/api/brokertable", 1, brokertableUpdateMsgFunc); token.Wait() && token.Error() != nil {
+	if token := managerClient.Subscribe("/api/brokertable/update/info", 1, brokertableUpdateInfoMsgFunc); token.Wait() && token.Error() != nil {
+		log.WithFields(log.Fields{"error": token.Error()}).Fatal("MQTT subscribe error")
+	}
+
+	// brokertable の更新作業の状態を受け取るチャンネル
+	brokertableUpdateStatusMsgCh := make(chan mqtt.Message, 10)
+	var brokertableUpdateStatusMsgFunc mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
+		brokertableUpdateStatusMsgCh <- msg
+	}
+	if token := managerClient.Subscribe("/api/brokertable/update/status", 1, brokertableUpdateStatusMsgFunc); token.Wait() && token.Error() != nil {
 		log.WithFields(log.Fields{"error": token.Error()}).Fatal("MQTT subscribe error")
 	}
 
@@ -55,7 +73,7 @@ func Gateway() {
 	var gatewayAreaInfoMsgFunc mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 		gatewayAreaInfoMsgCh <- msg
 	}
-	if token := managerClient.Subscribe("/api/brokertable", 1, gatewayAreaInfoMsgFunc); token.Wait() && token.Error() != nil {
+	if token := managerClient.Subscribe("/api/gatewayarea", 1, gatewayAreaInfoMsgFunc); token.Wait() && token.Error() != nil {
 		log.WithFields(log.Fields{"error": token.Error()}).Fatal("MQTT subscribe error")
 	}
 
@@ -92,18 +110,17 @@ func Gateway() {
 
 	////////////// 分散ブローカに関する情報を管理するオブジェクト //////////////
 
-	// 分散ブローカ接続情報管理オブジェクト
-	rootNode := &brokertable.Node{}
-	brokertable.UpdateHost(rootNode, "/", "localhost", 1893)
-	brokertable.UpdateHost(rootNode, "/1/2/2/3/3/2/0/0", "localhost", 1894)
-	brokertable.UpdateHost(rootNode, "/1/2/2/3/3/2/0/1", "localhost", 1895)
-	brokertable.UpdateHost(rootNode, "/1/2/2/3/3/2/0/2", "localhost", 1896)
-	brokertable.UpdateHost(rootNode, "/1/2/2/3/3/2/0/3", "localhost", 1897)
-
 	// 分散ブローカ ==> このプログラム ==> ゲートウェイブローカへ転送するためのチャンネル
 	apiMsgForwardToGatewayBrokerCh := make(chan mqtt.Message, 100)
 	bp := brokerpool.NewBrokerPool(0, apiMsgForwardToGatewayBrokerCh)
 	defer bp.CloseAllBroker(100)
+
+	// 分散ブローカ接続情報管理オブジェクト
+	rootNode := &brokertable.Node{}
+	if err := brokertable.UpdateHost(rootNode, "/", defaultDMB.Host, defaultDMB.Port); err != nil {
+		log.WithFields(log.Fields{"error": err}).Fatal("Brokerpool UpdateHost error")
+	}
+	bp.ConnectBroker(defaultDMB.Host, defaultDMB.Port)
 
 	// 統計データを格納する変数
 	apiRegisterMsgMetrics := metrics.NewMetrics("API_register_message")
@@ -117,11 +134,80 @@ func Gateway() {
 		apiMsgForwardToGatewayBrokerMetrics,
 		apiMsgForwardToDistributedBrokerMetrics,
 	}
+
+	// brokertable 更新関連の変数
+	var newBrokerInfo BrokerInfo
+	isUpdatedBrokerInfo := false
 	for {
 		select {
 		// brokertable の更新情報を受け取る
-		case m := <-brokertableUpdateMsgCh:
-			log.WithFields(log.Fields{"payload": string(m.Payload())}).Trace("brokertableUpdateMsgCh")
+		case m := <-brokertableUpdateInfoMsgCh:
+			log.WithFields(log.Fields{"payload": string(m.Payload())}).Trace("brokertableUpdateInfoMsgCh")
+			if isUpdatedBrokerInfo {
+				// NOTE: manager がバグったりしたら全ての gateway が一斉に停止する可能性が高いことに注意
+				log.WithFields(log.Fields{"msg": string(m.Payload())}).Fatal("Another brokertable update request is progressing (brokertableUpdateInfoMsgCh, AddSubsetBroker)")
+			}
+			// NOTE: 新たなbrokerの情報は一度に1つ分しか送信されないという前提条件
+			// 以下、manager から送られてくる通知情報例
+			// sample := `{"topic": "/1", "host": "localhost", "port": 1894}`
+
+			// JSONデコード
+			if err := json.Unmarshal(m.Payload(), &newBrokerInfo); err != nil {
+				log.Fatal(err)
+			}
+
+			// Broker を追加・接続・Subscribe
+			err := bp.AddSubsetBroker(newBrokerInfo.Host, newBrokerInfo.Port, newBrokerInfo.Topic, rootNode)
+			if err != nil {
+				log.WithFields(log.Fields{"topic": newBrokerInfo.Topic, "error": err}).Fatal("Brokertable Update error (brokertableUpdateInfoMsgCh, AddSubsetBroker)")
+			}
+
+			msg := fmt.Sprintf(`{"GatewayInfo":{"Host":%v,"Port":%v},"Status":"%v"}`, gatewayMB.Host, gatewayMB.Port, "ok")
+			if token := managerClient.Publish("/api/brokertable/update/complete", 1, false, msg); token.Wait() && token.Error() != nil {
+				log.WithFields(log.Fields{"topic": newBrokerInfo.Topic, "error": err}).Fatal("Brokertable Update error (brokertableUpdateInfoMsgCh, managerClient.Publish)")
+			}
+			isUpdatedBrokerInfo = true
+			log.WithFields(log.Fields{
+				"rootNode":      fmt.Sprint(rootNode),
+				"newBrokerInfo": newBrokerInfo,
+			}).Info("Brokerpool Update complete (brokertableUpdateInfoMsgCh)")
+
+		// brokertable の更新作業の状態を受け取るチャンネル
+		case m := <-brokertableUpdateStatusMsgCh:
+			log.WithFields(log.Fields{"payload": string(m.Payload())}).Trace("brokertableUpdateStatusMsgCh")
+			if !(isUpdatedBrokerInfo && string(m.Payload()) == "complete") {
+				log.WithFields(log.Fields{"isUpdatedBrokerInfo": isUpdatedBrokerInfo, "message": string(m.Payload())}).Error("Brokertable Update error (brokertableUpdateStatusMsgCh)")
+				continue
+			}
+			hosts, err := brokertable.LookupSubsetHosts(rootNode, newBrokerInfo.Topic)
+			if err != nil {
+				log.WithFields(log.Fields{"topic": newBrokerInfo.Topic, "error": err}).Fatal("Brokertable Lookup error (brokertableUpdateStatusMsgCh, LookupSubsetHosts)")
+			}
+
+			// Unsubscribe
+			for _, h := range hosts {
+				b, err := bp.GetBroker(h.Host, h.Port)
+				if err != nil {
+					log.WithFields(log.Fields{"error": err}).Debug("brokerpool.GetBroker() error (brokertableUpdateStatusMsgCh)")
+					continue
+				}
+				b.UnsubscribeSubsetTopics(newBrokerInfo.Topic)
+			}
+
+			// brokertable の更新
+			err = brokertable.UpdateHost(rootNode, newBrokerInfo.Topic, newBrokerInfo.Host, newBrokerInfo.Port)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"rootNode":      fmt.Sprint(rootNode),
+					"newBrokerInfo": newBrokerInfo,
+					"error":         err,
+				}).Fatal("Brokertable Update error (brokertableUpdateStatusMsgCh, UpdateHost)")
+			}
+			isUpdatedBrokerInfo = false
+			log.WithFields(log.Fields{
+				"rootNode":      fmt.Sprint(rootNode),
+				"newBrokerInfo": newBrokerInfo,
+			}).Info("Brokertable Update complete (brokertableUpdateStatusMsgCh)")
 
 		// Gateway の担当エリア情報を受け取る
 		case m := <-gatewayAreaInfoMsgCh:
@@ -140,7 +226,7 @@ func Gateway() {
 			}
 			b, err := bp.GetOrConnectBroker(host, port)
 			if err != nil {
-				log.WithFields(log.Fields{"host": host, "port": port, "error": err}).Error("Brokerpool GetOrConnectBroker error")
+				log.WithFields(log.Fields{"host": host, "port": port, "error": err, "broker_table": fmt.Sprint(rootNode)}).Error("Brokerpool GetOrConnectBroker error")
 				continue
 			}
 			b.Subscribe(topic)
@@ -158,7 +244,7 @@ func Gateway() {
 			}
 			b, err := bp.GetOrConnectBroker(host, port)
 			if err != nil {
-				log.WithFields(log.Fields{"host": host, "port": port, "error": err}).Error("Brokerpool GetOrConnectBroker error")
+				log.WithFields(log.Fields{"host": host, "port": port, "error": err, "broker_table": fmt.Sprint(rootNode)}).Error("Brokerpool GetOrConnectBroker error")
 				continue
 			}
 			b.Unsubscribe(topic)
@@ -181,13 +267,44 @@ func Gateway() {
 			}
 			b, err := bp.GetOrConnectBroker(host, port)
 			if err != nil {
-				log.WithFields(log.Fields{"host": host, "port": port, "error": err}).Error("Brokerpool GetOrConnectBroker error")
+				log.WithFields(log.Fields{"host": host, "port": port, "error": err, "broker_table": fmt.Sprint(rootNode)}).Error("Brokerpool GetOrConnectBroker error")
 				continue
 			}
 			b.Publish(topic, false, m.Payload())
 
+			// brokertable の更新作業中の場合は、新たな分散ブローカへも転送する
+			if isUpdatedBrokerInfo {
+				if len(topic) >= len(newBrokerInfo.Topic) {
+					isMatched := true
+					for i, s := range newBrokerInfo.Topic {
+						if string(topic[i]) != string(s) {
+							isMatched = false
+							break
+						}
+					}
+					if !isMatched {
+						continue
+					}
+				}
+				b, err := bp.GetBroker(newBrokerInfo.Host, newBrokerInfo.Port)
+				if err != nil {
+					log.WithFields(log.Fields{"host": host, "port": port, "error": err, "broker_table": fmt.Sprint(rootNode)}).Info("Brokerpool GetBroker error")
+					continue
+				}
+				b.Publish(topic, false, m.Payload())
+			}
+
 		case <-metricsTicker.C:
-			log.Trace("metricsTicker.C")
+			passedTimeSecTotal := time.Now().Unix() - startTimeUnix
+			passedTimeHour := passedTimeSecTotal / 3600
+			passedTimeMinutes := (passedTimeSecTotal / 60) % 60
+			passedTimeSeconds := passedTimeSecTotal % 60
+			log.WithFields(log.Fields{
+				"hour":          passedTimeHour,
+				"minutes":       passedTimeMinutes,
+				"seconds":       passedTimeSeconds,
+				"seconds_total": passedTimeSecTotal,
+			}).Info("Total run time")
 			for _, m := range metricsList {
 				ok, rate, name := m.GetRate()
 				if ok {

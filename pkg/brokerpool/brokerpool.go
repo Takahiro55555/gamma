@@ -3,6 +3,7 @@ package brokerpool
 import (
 	"fmt"
 	"gateway/pkg/broker"
+	"gateway/pkg/brokertable"
 	"reflect"
 	"sync"
 	"time"
@@ -17,6 +18,7 @@ import (
 type Brokerpool interface {
 	GetBroker(host string, port uint16) (broker.Broker, error)
 	ConnectBroker(host string, port uint16) error
+	AddSubsetBroker(newHost string, newPort uint16, topic string, rootNode *brokertable.Node) error
 	GetOrConnectBroker(host string, port uint16) (broker.Broker, error)
 	TryDisconnectBroker(host string, port uint16, expirationFromLastPub time.Duration, quiesce uint) bool
 	IncreaseSubCnt(host string, port uint16) error
@@ -46,6 +48,50 @@ func (p *brokerpool) GetBroker(host string, port uint16) (broker.Broker, error) 
 
 	b, err := bt.Load(port)
 	return b, err
+}
+
+//NOTE: この関数を呼び出す時点では brokertable の更新は行わないこと
+func (p *brokerpool) AddSubsetBroker(newHost string, newPort uint16, topic string, rootNode *brokertable.Node) error {
+	b, err := p.GetBroker(newHost, newPort)
+
+	// 重複を防ぐための確認
+	if err == nil {
+		return AlreadyConnectedError{Msg: fmt.Sprintf("This broker is already connected (tcp://%v:%v).", newHost, newPort)}
+	}
+
+	// エラーが NotFoundError であることを確認する
+	typeNotFoundErr := reflect.ValueOf(NotFoundError{}).Type()
+	if reflect.ValueOf(err).Type() != typeNotFoundErr {
+		return err
+	}
+
+	oldHost, oldPort, err := brokertable.LookupHost(rootNode, topic)
+	if err != nil {
+		return nil
+	}
+
+	b, err = p.GetBroker(oldHost, oldPort)
+	if err != nil {
+		return err
+	}
+
+	subsetBroker, err := b.CreateSubsetBroker(newHost, newPort, p.qos, p.ch, topic)
+	if err != nil {
+		return err
+	}
+
+	// brokerpool へ broker.Broker インターフェースを登録する
+	bt, err := p.bt.Load(newHost)
+	if err != nil && reflect.ValueOf(err).Type() == typeNotFoundErr {
+		bt = &BrokerTableByPort{}
+		p.bt.Store(newHost, bt)
+	}
+	bt.Store(newPort, subsetBroker)
+
+	// Subscribe する
+	subsetBroker.SubscribeAll()
+
+	return nil
 }
 
 func (p *brokerpool) ConnectBroker(host string, port uint16) error {
