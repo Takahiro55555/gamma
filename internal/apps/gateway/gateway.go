@@ -253,7 +253,9 @@ func Gateway(gatewayMB, managerMB, defaultDMB BrokerInfo) {
 		case m := <-apiMsgForwardToGatewayBrokerCh:
 			apiMsgForwardToGatewayBrokerMetrics.Countup()
 			log.WithFields(log.Fields{"topic": m.Topic(), "payload": string(m.Payload())}).Trace("apiMsgForwardToGatewayBrokerCh")
-			gatewayClient.Publish(m.Topic(), 0, false, m.Payload())
+			if token := gatewayClient.Publish(m.Topic(), 0, false, m.Payload()); token.Wait() && token.Error() != nil {
+				log.WithFields(log.Fields{"topic": m.Topic(), "error": token.Error()}).Error("apiMsgForwardToGatewayBrokerCh")
+			}
 
 		// ゲートウェイブローカ ==> このプログラム ==> 当該分散ブローカへ転送する
 		case m := <-apiMsgForwardToDistributedBrokerCh:
