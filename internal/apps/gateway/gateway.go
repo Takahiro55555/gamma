@@ -163,7 +163,7 @@ func Gateway(gatewayMB, managerMB, defaultDMB BrokerInfo) {
 			}
 
 			msg := fmt.Sprintf(`{"GatewayInfo":{"Host":%v,"Port":%v},"Status":"%v"}`, gatewayMB.Host, gatewayMB.Port, "ok")
-			if token := managerClient.Publish("/api/brokertable/update/complete", 1, false, msg); token.Wait() && token.Error() != nil {
+			if token := managerClient.Publish("/api/brokertable/update/result", 1, false, msg); token.Wait() && token.Error() != nil {
 				log.WithFields(log.Fields{"topic": newBrokerInfo.Topic, "error": err}).Fatal("Brokertable Update error (brokertableUpdateInfoMsgCh, managerClient.Publish)")
 			}
 			isUpdatedBrokerInfo = true
