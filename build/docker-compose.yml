@@ -16,19 +16,26 @@ version: "3.3"
 # Distributed Broker 09 : localhost:1901
 
 services: 
-  gateway-broker-00:
+  manager-broker-00:
     image: eclipse-mosquitto:1.6
-    container_name: "gateway-broker-00"
+    container_name: "manager-broker-00"
     ports: 
       - 1883:1883
       - 9001:9001
 
+  gateway-broker-00:
+    image: eclipse-mosquitto:1.6
+    container_name: "gateway-broker-00"
+    ports: 
+      - 1884:1883
+      - 9002:9001
+  
   gateway-broker-01:
     image: eclipse-mosquitto:1.6
     container_name: "gateway-broker-01"
     ports: 
-      - 1884:1883
-      - 9002:9001
+      - 1885:1883
+      - 9003:9001
 
   distributed-broker-00:
     image: eclipse-mosquitto:1.6
