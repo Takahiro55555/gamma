@@ -108,7 +108,7 @@ func UpdateHost(root *Node, topic string, host string, port uint16) error {
 }
 
 func validateTopic(topic string) error {
-	rTopic := regexp.MustCompile(`^/([0-9]+(/[0-3])*)?$`)
+	rTopic := regexp.MustCompile(`^((/)|(/([0-9]+(/[0-3])*)?))$`)
 	if rTopic.MatchString(topic) {
 		return nil
 	}

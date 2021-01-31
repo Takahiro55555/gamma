@@ -37,7 +37,7 @@ func (st *subsctable) String() string {
 }
 
 func validateTopic(topic string) error {
-	rTopic := regexp.MustCompile(`^(/[0-9]+(/[0-3])*)?((/#)|(/[\w]+))?$`)
+	rTopic := regexp.MustCompile(`^((/)|(/[0-9]+(/[0-3])*))?((/#)|(/[\w]+))?$`)
 	if rTopic.MatchString(topic) {
 		return nil
 	}

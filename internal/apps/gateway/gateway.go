@@ -260,7 +260,7 @@ func Gateway(gatewayMB, managerMB BrokerInfo) {
 				continue
 			}
 			if !isUpdatedBrokerInfo {
-				log.WithFields(log.Fields{"isUpdatedBrokerInfo": isUpdatedBrokerInfo, "message": string(m.Payload())}).Info("This broker is already registerd")
+				log.WithFields(log.Fields{"isUpdatedBrokerInfo": isUpdatedBrokerInfo, "message": string(m.Payload())}).Info("There is no updating info...")
 				continue
 			}
 			if string(m.Payload()) != "complete" {
@@ -316,9 +316,9 @@ func Gateway(gatewayMB, managerMB BrokerInfo) {
 				log.WithFields(log.Fields{"topic": topic, "error": err}).Error("Brokertable LookupHost error")
 				continue
 			}
-			b, err := bp.GetOrConnectBroker(host, port)
+			b, err := bp.GetBroker(host, port)
 			if err != nil {
-				log.WithFields(log.Fields{"host": host, "port": port, "error": err, "broker_table": fmt.Sprint(rootNode)}).Error("Brokerpool GetOrConnectBroker error")
+				log.WithFields(log.Fields{"host": host, "port": port, "error": err, "broker_table": fmt.Sprint(rootNode)}).Error("Brokerpool GetBroker error")
 				continue
 			}
 			b.Subscribe(topic)
@@ -371,9 +371,9 @@ func Gateway(gatewayMB, managerMB BrokerInfo) {
 				log.WithFields(log.Fields{"topic": topic, "error": err}).Error("Brokertable LookupHost error")
 				continue
 			}
-			b, err := bp.GetOrConnectBroker(host, port)
+			b, err := bp.GetBroker(host, port)
 			if err != nil {
-				log.WithFields(log.Fields{"host": host, "port": port, "error": err, "broker_table": fmt.Sprint(rootNode)}).Error("Brokerpool GetOrConnectBroker error")
+				log.WithFields(log.Fields{"host": host, "port": port, "error": err, "broker_table": fmt.Sprint(rootNode)}).Error("Brokerpool GetBroker error")
 				continue
 			}
 			b.Publish(topic, false, m.Payload())

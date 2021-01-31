@@ -4,6 +4,7 @@
 
 *.out
 *.exe
+*.arm64
 
 go.sum
 cover.html
