@@ -46,7 +46,7 @@ func Manager(client mqtt.Client) {
 	signal.Notify(signalCh, os.Interrupt)
 
 	// 1秒おきに統計情報などをログに出力するためのタイマ
-	metricsTicker := time.NewTicker(time.Second)
+	// metricsTicker := time.NewTicker(time.Second)
 
 	// Gatewayの分散ブローカ情報追加結果を受け取るチャンネル
 	// brokertableUpdateResultMsgCh := make(chan mqtt.Message, 10)
@@ -89,11 +89,12 @@ func Manager(client mqtt.Client) {
 	gatewayStatusMap := map[string]GatewayBrokerStatus{}
 	allDistributedBrokerList := AllDistributedBrokerInfo{Version: -1, DMBs: []DistributedBrokerInfo{}}
 	isUpdatingDistributedBrokerList := false
-
+	metricsTrigger := make(chan bool, 10)
 	for {
 		select {
 		// Gatewayの状態通知を受取るチャンネル
 		case m := <-gatewayNotifyMsgCh:
+			metricsTrigger <- true
 			log.WithFields(log.Fields{"payload": string(m.Payload())}).Trace("gatewayNotifyMsgCh")
 			// JSONデコード
 			var gatewayStatus GatewayBrokerStatus
@@ -131,11 +132,12 @@ func Manager(client mqtt.Client) {
 				if token := client.Publish("/api/brokertable/update/status", 2, false, "complete"); token.Wait() && token.Error() != nil {
 					log.WithFields(log.Fields{"error": token.Error()}).Fatal("MQTT publish error")
 				}
-				log.Info("Distributed broker`s info update complete ")
+				log.Info("Distributed broker`s info update complete by gateway")
 			}
 
 		// ユーザによるゲートウェイ担当エリアの設定
 		case m := <-setGatewayBrokerMsgCh:
+			metricsTrigger <- true
 			log.WithFields(log.Fields{"payload": string(m.Payload())}).Trace("setGatewayBrokerMsgCh")
 			// JSONデコード
 			var gatewayCoverArea GatewayBrokerInfo
@@ -170,6 +172,7 @@ func Manager(client mqtt.Client) {
 
 		// ユーザによる分散ブローカの登録（「出来なかったらやり直せばいいでしょ」の方針）
 		case m := <-addDistributedBrokerMsgCh:
+			metricsTrigger <- true
 			log.WithFields(log.Fields{"payload": string(m.Payload())}).Trace("addDistributedBrokerMsgCh")
 			if isUpdatingDistributedBrokerList {
 				log.WithFields(log.Fields{
@@ -212,7 +215,7 @@ func Manager(client mqtt.Client) {
 				log.WithFields(log.Fields{"error": token.Error()}).Fatal("Notify to manager")
 			}
 
-		case <-metricsTicker.C:
+		case <-metricsTrigger:
 			passedTimeSecTotal := time.Now().Unix() - startTimeUnix
 			passedTimeHour := passedTimeSecTotal / 3600
 			passedTimeMinutes := (passedTimeSecTotal / 60) % 60
@@ -225,6 +228,16 @@ func Manager(client mqtt.Client) {
 			}).Info("Total run time")
 
 		case <-signalCh:
+			passedTimeSecTotal := time.Now().Unix() - startTimeUnix
+			passedTimeHour := passedTimeSecTotal / 3600
+			passedTimeMinutes := (passedTimeSecTotal / 60) % 60
+			passedTimeSeconds := passedTimeSecTotal % 60
+			log.WithFields(log.Fields{
+				"hour":          passedTimeHour,
+				"minutes":       passedTimeMinutes,
+				"seconds":       passedTimeSeconds,
+				"seconds_total": passedTimeSecTotal,
+			}).Info("Total run time")
 			log.Info("Interrupt detected.\n")
 			return
 		}

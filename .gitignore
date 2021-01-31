@@ -4,5 +4,6 @@
 
 *.out
 *.exe
+*.arm64
 
 cover.html
