@@ -45,6 +45,7 @@ clean:
 	$(GOCLEAN) ./...
 	rm -f $(BINARY_DEFAULT_NAME).$(BINARY_DEFAULT_SUFFIX)
 	rm -f $(BINARY_LINUX_NAME).arm64
+	rm -f $(BINARY_LINUX_NAME).arm
 	rm -f $(COVERAGE_FILE) $(COVERAGE_FILE_HTML)
 run:
 	$(GORUN) cmd/gateway/main.go -level ${level} -env ${env} ${caller} -managerHost $(managerHost) -managerPort $(managerPort) -gatewayHost $(gatewayHost) -gatewayPort $(gatewayPort)
