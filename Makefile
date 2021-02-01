@@ -27,7 +27,7 @@ endif
 
 all: test build
 .PHONY: build  # 擬似ターゲット
-build:
+build: clean
 	./build.sh
 
 .PHONY: test  # 擬似ターゲット
