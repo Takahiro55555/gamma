@@ -2,7 +2,7 @@
 
 SRCFILE="cmd/manager/main.go"
 OUTPUTFILE_DIR="bin/$(python3 -c "from datetime import datetime as dt;print(dt.now().strftime('%Y-%m-%d/%H'))")"
-OUTPUTFILE="${OUTPUTFILE_DIR}/$(python3 -c "from datetime import datetime as dt;print(dt.now().strftime('%Y%m%d%H-%M-%S'))")"
+OUTPUTFILE="${OUTPUTFILE_DIR}/manager-$(python3 -c "from datetime import datetime as dt;print(dt.now().strftime('%Y%m%d%H-%M-%S'))")"
 OUTPUTFILE_SIG="bin/`hostname`.bin.sig"
 SIG_CMD="md5sum"
 if [ `uname` = "Darwin" ]; then
