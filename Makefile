@@ -25,14 +25,10 @@ ifeq ($(shell uname),Darwin)
 	HTML_OPEN_CMD=open -a "Safari"
 endif
 
-all: test build build-linux-arm64 build-linux-arm
+all: test build
 .PHONY: build  # 擬似ターゲット
 build:
-	$(GOBUILD) -o $(BINARY_DEFAULT_NAME).$(BINARY_DEFAULT_SUFFIX) $(GO_ENTRY_POINT_GATEWAY)
-build-linux-arm64:
-	GOOS=linux GOARCH=arm64 $(GOBUILD) -o $(BINARY_LINUX_NAME).arm64 $(GO_ENTRY_POINT_GATEWAY)
-build-linux-arm:
-	GOOS=linux GOARCH=arm $(GOBUILD) -o $(BINARY_LINUX_NAME).arm $(GO_ENTRY_POINT_GATEWAY)
+	./build.sh
 
 .PHONY: test  # 擬似ターゲット
 test:
@@ -43,9 +39,9 @@ coverage:
 	$(HTML_OPEN_CMD) $(COVERAGE_FILE_HTML)
 clean:
 	$(GOCLEAN) ./...
-	rm -f $(BINARY_DEFAULT_NAME).$(BINARY_DEFAULT_SUFFIX)
-	rm -f $(BINARY_LINUX_NAME).arm64
-	rm -f $(BINARY_LINUX_NAME).arm
+	rm -f *.$(BINARY_DEFAULT_SUFFIX)
+	rm -f *.arm64
+	rm -f *.arm
 	rm -f $(COVERAGE_FILE) $(COVERAGE_FILE_HTML)
 run:
 	$(GORUN) cmd/gateway/main.go -level ${level} -env ${env} ${caller} -managerHost $(managerHost) -managerPort $(managerPort) -gatewayHost $(gatewayHost) -gatewayPort $(gatewayPort)

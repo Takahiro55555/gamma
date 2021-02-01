@@ -6,5 +6,6 @@
 *.exe
 *.arm64
 *.arm
+*.bin.sig
 
 cover.html
