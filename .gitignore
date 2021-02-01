@@ -5,6 +5,6 @@
 *.out
 *.exe
 *.arm64
+*.arm
 
-go.sum
 cover.html

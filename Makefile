@@ -5,7 +5,9 @@ GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
 GORUN=$(GOCMD) run
 GO_ENTRY_POINT_GATEWAY=cmd/gateway/main.go
-BINARY_NAME=gateway.out
+BINARY_DEFAULT_NAME=gateway
+BINARY_DEFAULT_SUFFIX=out
+BINARY_LINUX_NAME=gateway-linux
 COVERAGE_FILE=cover.out
 COVERAGE_FILE_HTML=cover.html
 level=warn
@@ -23,10 +25,15 @@ ifeq ($(shell uname),Darwin)
 	HTML_OPEN_CMD=open -a "Safari"
 endif
 
-all: test build
+all: test build build-linux-arm64 build-linux-arm
 .PHONY: build  # 擬似ターゲット
 build:
-	$(GOBUILD) -o $(BINARY_NAME) $(GO_ENTRY_POINT_GATEWAY)
+	$(GOBUILD) -o $(BINARY_DEFAULT_NAME).$(BINARY_DEFAULT_SUFFIX) $(GO_ENTRY_POINT_GATEWAY)
+build-linux-arm64:
+	GOOS=linux GOARCH=arm64 $(GOBUILD) -o $(BINARY_LINUX_NAME).arm64 $(GO_ENTRY_POINT_GATEWAY)
+build-linux-arm:
+	GOOS=linux GOARCH=arm $(GOBUILD) -o $(BINARY_LINUX_NAME).arm $(GO_ENTRY_POINT_GATEWAY)
+
 .PHONY: test  # 擬似ターゲット
 test:
 	$(GOTEST) -coverprofile=$(COVERAGE_FILE) ./...
@@ -36,7 +43,8 @@ coverage:
 	$(HTML_OPEN_CMD) $(COVERAGE_FILE_HTML)
 clean:
 	$(GOCLEAN) ./...
-	rm -f $(BINARY_NAME)
+	rm -f $(BINARY_DEFAULT_NAME).$(BINARY_DEFAULT_SUFFIX)
+	rm -f $(BINARY_LINUX_NAME).arm64
 	rm -f $(COVERAGE_FILE) $(COVERAGE_FILE_HTML)
 run:
 	$(GORUN) cmd/gateway/main.go -level ${level} -env ${env} ${caller} -managerHost $(managerHost) -managerPort $(managerPort) -gatewayHost $(gatewayHost) -gatewayPort $(gatewayPort)
