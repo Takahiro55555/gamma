@@ -27,8 +27,12 @@ type AllDistributedBrokerInfo struct {
 	DMBs    []DistributedBrokerInfo `json:"brokers"`
 }
 
-type GatewayBrokerInfo struct {
+type GatewayBrokerInfoSingleTopic struct {
 	Topic      string     `json:"topic"`
+	BrokerInfo BrokerInfo `json:"broker_info"`
+}
+type GatewayBrokerInfo struct {
+	Topics     []string   `json:"topic"`
 	BrokerInfo BrokerInfo `json:"broker_info"`
 }
 
@@ -85,7 +89,7 @@ func Manager(client mqtt.Client) {
 	}
 
 	// 分散ブローカ情報更新の際に使用する
-	gatewayCoverAreaInfo := map[string]GatewayBrokerInfo{}
+	gatewayCoverAreaInfo := map[string]*GatewayBrokerInfo{}
 	gatewayStatusMap := map[string]GatewayBrokerStatus{}
 	allDistributedBrokerList := AllDistributedBrokerInfo{Version: -1, DMBs: []DistributedBrokerInfo{}}
 	isUpdatingDistributedBrokerList := false
@@ -103,13 +107,16 @@ func Manager(client mqtt.Client) {
 			}
 			key := fmt.Sprintf("%v-%v", gatewayStatus.BrokerInfo.Host, gatewayStatus.BrokerInfo.Port)
 			if _, ok := gatewayCoverAreaInfo[key]; !ok {
-				gatewayCoverAreaInfo[key] = GatewayBrokerInfo{Topic: "/", BrokerInfo: gatewayStatus.BrokerInfo}
+				gatewayCoverAreaInfo[key] = &GatewayBrokerInfo{Topics: []string{"/"}, BrokerInfo: gatewayStatus.BrokerInfo}
 			}
 			gatewayStatusMap[key] = gatewayStatus
 			if gatewayStatus.Status == "up" {
-				var payload []GatewayBrokerInfo
+				var payload []GatewayBrokerInfoSingleTopic
 				for _, v := range gatewayCoverAreaInfo {
-					payload = append(payload, v)
+					for _, t := range v.Topics {
+						var gatewayCoverArea = GatewayBrokerInfoSingleTopic{Topic: t, BrokerInfo: BrokerInfo{Host: v.BrokerInfo.Host, Port: v.BrokerInfo.Port}}
+						payload = append(payload, gatewayCoverArea)
+					}
 				}
 				msg, err := json.Marshal(payload)
 				if err != nil {
@@ -140,7 +147,7 @@ func Manager(client mqtt.Client) {
 			metricsTrigger <- true
 			log.WithFields(log.Fields{"payload": string(m.Payload())}).Trace("setGatewayBrokerMsgCh")
 			// JSONデコード
-			var gatewayCoverArea GatewayBrokerInfo
+			var gatewayCoverArea GatewayBrokerInfoSingleTopic
 			if err := json.Unmarshal(m.Payload(), &gatewayCoverArea); err != nil {
 				log.WithFields(log.Fields{"err": err}).Fatal("add gateway broker (gatewayNotifyMsgCh)")
 			}
@@ -152,11 +159,25 @@ func Manager(client mqtt.Client) {
 				}).Error("This gateway is not exists...")
 				continue
 			}
-			gatewayCoverAreaInfo[key] = gatewayCoverArea
+			// ToDo: この登録処理を変更して、単一のGatewayに複数の担当エリアを設定できるように変更する
+			// gatewayCoverAreaInfo[key] = gatewayCoverArea
+			var isDuplicateTopic = false
+			for _, t := range gatewayCoverAreaInfo[key].Topics {
+				isDuplicateTopic = t == gatewayCoverArea.Topic
+				if isDuplicateTopic {
+					break
+				}
+			}
+			if !isDuplicateTopic {
+				gatewayCoverAreaInfo[key].Topics = append(gatewayCoverAreaInfo[key].Topics, gatewayCoverArea.Topic)
+			}
 
-			var payload []GatewayBrokerInfo
+			var payload []GatewayBrokerInfoSingleTopic
 			for _, v := range gatewayCoverAreaInfo {
-				payload = append(payload, v)
+				for _, t := range v.Topics {
+					gatewayCoverArea = GatewayBrokerInfoSingleTopic{Topic: t, BrokerInfo: BrokerInfo{Host: v.BrokerInfo.Host, Port: v.BrokerInfo.Port}}
+					payload = append(payload, gatewayCoverArea)
+				}
 			}
 			msg, err := json.Marshal(payload)
 			if err != nil {
