@@ -21,3 +21,4 @@
 *.bin.sig
 cover.html
 .pid
+*.log
