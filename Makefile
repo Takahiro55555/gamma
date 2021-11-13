@@ -19,8 +19,8 @@ endif
 all: test build
 .PHONY: build  # 擬似ターゲット
 build: clean
-	./build.sh manager
-	./build.sh gateway
+	./scripts/build.sh manager
+	./scripts/build.sh gateway
 
 .PHONY: test  # 擬似ターゲット
 test:
@@ -36,6 +36,6 @@ clean:
 	rm -f *.arm
 	rm -f $(COVERAGE_FILE) $(COVERAGE_FILE_HTML)
 run:
-	./run.sh run
+	./scripts/run.sh run
 stop:
-	./run.sh
+	./scripts/run.sh
