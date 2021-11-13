@@ -45,6 +45,7 @@ func Gateway(gatewayMB, managerMB BrokerInfo) {
 		log.WithFields(log.Fields{"error": token.Error()}).Fatal("MQTT connect error")
 	}
 	defer managerClient.Disconnect(1000)
+	log.WithFields(log.Fields{"host": managerMB.Host, "port": managerMB.Port}).Info("Connected manager broker")
 
 	//////////////        ゲートウェイブローカへ接続する         //////////////
 	gatewayBroker := fmt.Sprintf("tcp://%v:%v", gatewayMB.Host, gatewayMB.Port)
@@ -57,6 +58,7 @@ func Gateway(gatewayMB, managerMB BrokerInfo) {
 		log.WithFields(log.Fields{"error": token.Error()}).Fatal("MQTT connect error")
 	}
 	defer gatewayClient.Disconnect(1000)
+	log.WithFields(log.Fields{"host": gatewayMB.Host, "port": gatewayMB.Port}).Info("Connected gateway broker")
 
 	//////////////        メッセージハンドラの作成・登録         //////////////
 
@@ -142,7 +144,7 @@ func Gateway(gatewayMB, managerMB BrokerInfo) {
 	apiUnregisterMsgMetrics := metrics.NewMetrics("API_unregister_message")
 	apiMsgForwardToGatewayBrokerMetrics := metrics.NewMetrics("Forward_to_gateway_broker")
 	apiMsgForwardToDistributedBrokerMetrics := metrics.NewMetrics("Forward_to_distributed_broker")
-	metricsTicker := time.NewTicker(time.Second)
+	metricsTicker := time.NewTicker(time.Minute)
 	metricsList := []*metrics.Metrics{
 		apiRegisterMsgMetrics,
 		apiUnregisterMsgMetrics,
