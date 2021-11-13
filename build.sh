@@ -1,8 +1,18 @@
 #!/bin/bash
 
-SRCFILE="cmd/manager/main.go"
-OUTPUTFILE_DIR="bin/$(python3 -c "from datetime import datetime as dt;print(dt.now().strftime('%Y-%m-%d/%H'))")"
-OUTPUTFILE="${OUTPUTFILE_DIR}/manager-$(python3 -c "from datetime import datetime as dt;print(dt.now().strftime('%Y%m%d%H-%M-%S'))")"
+if [ "${1}" = "manager" ]; then
+    SRCFILE="cmd/manager/main.go"
+    OUTPUTFILE_DIR="bin/$(python3 -c "from datetime import datetime as dt;print(dt.now().strftime('%Y-%m-%d/%H'))")"
+    OUTPUTFILE="${OUTPUTFILE_DIR}/manager-$(python3 -c "from datetime import datetime as dt;print(dt.now().strftime('%Y%m%d%H-%M-%S'))")"
+elif [ "${1}" = "gateway" ]; then
+    SRCFILE="cmd/gateway/main.go"
+    OUTPUTFILE_DIR="bin/$(python3 -c "from datetime import datetime as dt;print(dt.now().strftime('%Y-%m-%d/%H'))")"
+    OUTPUTFILE="${OUTPUTFILE_DIR}/gateway-$(python3 -c "from datetime import datetime as dt;print(dt.now().strftime('%Y%m%d%H-%M-%S'))")"
+else
+    echo "[ERROR] Unknown option: '${1}'. You must use 'manager' or 'gateway' as build target option. (build.sh)"
+    exit 1
+fi
+
 OUTPUTFILE_SIG="bin/`hostname`.bin.sig"
 SIG_CMD="md5sum"
 if [ `uname` = "Darwin" ]; then

@@ -1,20 +1,4 @@
 version: "3.3"
-
-# テスト用ブローカ接続情報
-# Gateway Broker 00 : localhost:1883
-# Gateway Broker 01 : localhost:1884
-#
-# Distributed Broker 00 : localhost:1893
-# Distributed Broker 01 : localhost:1894
-# Distributed Broker 02 : localhost:1895
-# Distributed Broker 03 : localhost:1896
-# Distributed Broker 04 : localhost:1897
-# Distributed Broker 05 : localhost:1898
-# Distributed Broker 06 : localhost:1899
-# Distributed Broker 07 : localhost:1900
-# Distributed Broker 08 : localhost:1901
-# Distributed Broker 09 : localhost:1901
-
 services: 
   manager-broker-00:
     image: eclipse-mosquitto:1.6
@@ -22,6 +6,27 @@ services:
     ports: 
       - 1883:1883
       - 9001:9001
+
+  gateway-broker-00:
+    image: eclipse-mosquitto:1.6
+    container_name: "gateway-broker-00"
+    ports: 
+      - 1884:1883
+      - 9002:9001
+
+  distributed-broker-00:
+    image: eclipse-mosquitto:1.6
+    container_name: "distributed-broker-00"
+    ports: 
+      - 1893:1883
+      - 9011:9001
+
+  distributed-broker-01:
+    image: eclipse-mosquitto:1.6
+    container_name: "distributed-broker-01"
+    ports: 
+      - 1894:1883
+      - 9012:9001
 
 networks:
   default:
