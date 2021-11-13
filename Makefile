@@ -10,7 +10,11 @@ BINARY_DEFAULT_SUFFIX=out
 BINARY_LINUX_NAME=gateway-linux
 COVERAGE_FILE=cover.out
 COVERAGE_FILE_HTML=cover.html
-level=warn
+DOCKER_COMPOSE=docker-compose
+TEST_DOCKER_COMPOSE_FILE=./build/docker-compose.yml
+TEST_DOCKER_COMPOSE_UP_D=$(DOCKER_COMPOSE) -f $(TEST_DOCKER_COMPOSE_FILE) up -d
+TEST_DOCKER_COMPOSE_DOWN=$(DOCKER_COMPOSE) -f $(TEST_DOCKER_COMPOSE_FILE) down
+level=info
 env=development
 caller= 
 managerHost=localhost
@@ -43,5 +47,9 @@ clean:
 	rm -f *.arm64
 	rm -f *.arm
 	rm -f $(COVERAGE_FILE) $(COVERAGE_FILE_HTML)
-run:
+broker-up:
+	$(TEST_DOCKER_COMPOSE_UP_D)
+broker-down:
+	$(TEST_DOCKER_COMPOSE_DOWN)
+run: broker-down broker-up
 	$(GORUN) cmd/gateway/main.go -level ${level} -env ${env} ${caller} -managerHost $(managerHost) -managerPort $(managerPort) -gatewayHost $(gatewayHost) -gatewayPort $(gatewayPort)

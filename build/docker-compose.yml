@@ -1,0 +1,28 @@
+version: "3.3"
+
+services: 
+  gateway-broker-00:
+    image: eclipse-mosquitto:1.6
+    container_name: "gateway-broker-00"
+    ports: 
+      - 1884:1883
+      - 9002:9001
+
+  distributed-broker-00:
+    image: eclipse-mosquitto:1.6
+    container_name: "distributed-broker-00"
+    ports: 
+      - 1893:1883
+      - 9011:9001
+
+  distributed-broker-01:
+    image: eclipse-mosquitto:1.6
+    container_name: "distributed-broker-01"
+    ports: 
+      - 1894:1883
+      - 9012:9001
+
+networks:
+  default:
+    external:
+      name: gamma-network
