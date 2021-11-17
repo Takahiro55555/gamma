@@ -10,7 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-//////////////  　    以下 broker 構造体関連  　    //////////////
+//////////////        以下 broker 構造体関連        //////////////
 // Broker is the interface definition
 type Broker interface {
 	Publish(topic string, retained bool, payload interface{})
@@ -185,8 +185,8 @@ func (b *broker) GetLastPub() time.Time {
 	return b.LastPub
 }
 
-//////////////  　    以上 broker 構造体関連       //////////////
-//////////////      　以下 Error 構造体関連       //////////////
+//////////////        以上 broker 構造体関連       //////////////
+//////////////        以下 Error 構造体関連       //////////////
 
 // MaxSubCntError 構造体
 // 当該ブローカに設定された subscriber 上限に達した際に返される
@@ -208,4 +208,4 @@ func (e ZeroSubCntError) Error() string {
 	return fmt.Sprintf("Error: %v", e.Msg)
 }
 
-//////////////      　以上 Error 構造体関連       //////////////
+//////////////        以上 Error 構造体関連       //////////////
