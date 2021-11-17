@@ -221,6 +221,10 @@ func Manager(client mqtt.Client) {
 					break
 				}
 			}
+			if !isUpdatingDistributedBrokerList {
+				continue
+			}
+
 			allDistributedBrokerList.DMBs = append(allDistributedBrokerList.DMBs, newDistributedBrokerInfo)
 			// 非安定ソート
 			sort.Slice(allDistributedBrokerList.DMBs, func(i, j int) bool {
