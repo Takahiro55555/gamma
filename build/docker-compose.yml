@@ -14,6 +14,13 @@ services:
       - 1884:1883
       - 9002:9001
 
+  gateway-broker-01:
+    image: eclipse-mosquitto:1.6
+    container_name: "gateway-broker-01"
+    ports: 
+      - 1885:1883
+      - 9003:9001
+
   distributed-broker-00:
     image: eclipse-mosquitto:1.6
     container_name: "distributed-broker-00"
@@ -28,7 +35,3 @@ services:
       - 1894:1883
       - 9012:9001
 
-networks:
-  default:
-    external:
-      name: gamma-network
