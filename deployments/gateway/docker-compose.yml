@@ -10,8 +10,8 @@ services:
       caller: "false"
       # managerHost: mqtt-broker
       # managerPort: "1883"
-      gatewayHost: mqtt-broker  # 同一の Docker network で動作するコンテナ名(ホスト名、Docker側が名前解決)
-      gatewayPort: "1883"
+      # gatewayHost: mqtt-broker  # 同一の Docker network で動作するコンテナ名(ホスト名、Docker側が名前解決)
+      # gatewayPort: "1883"
       env: production
     logging:
       driver: json-file
