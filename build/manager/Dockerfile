@@ -6,10 +6,13 @@ RUN go get -v -t -d ./... && \
 
 FROM alpine:latest
 COPY --from=builder /tmp/gamma/manager /bin/
+# 参考: Alpine Linux で go バイナリを起動しようとすると not found が発生する - Qiita
+#   URL https://qiita.com/otsuka_kenchan/items/6686a28ac79d54dbe769
+RUN apk add --no-cache libc6-compat
 
 ENV env "production"
 ENV level "warn"
 ENV caller "false"
 ENV host "127.0.0.1"
 ENV port "1883"
-ENTRYPOINT ["/bin/manager", "-env", "${env}", "-level", "${level}", "-caller", "${caller}", "-host", "${host}", "-port", "${port}"]
+ENTRYPOINT ["/bin/sh", "-c", "/bin/manager", "-env", "${env}", "-level", "${level}", "-caller", "${caller}", "-host", "${host}", "-port", "${port}"]
