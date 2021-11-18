@@ -21,4 +21,4 @@ ENV dmbPort "1883"
 ENV dmbTopic "/"
 ENV baseRetransmissionIntervalMilliSeconds "10"
 ENV maxRetransmissionIntervalMilliSeconds "5000"
-ENTRYPOINT ["/bin/sh", "-c", "/bin/dmb", "-env", "${env}", "-level", "${level}", "-caller", "${caller}", "-managerHost", "${managerHost}", "-managerPort", "${managerPort}", "-dmbHost", "${dmbHost}", "-dmbPort", "${dmbPort}", "-dmbTopic", "${dmbTopic}", "-baseRetransmissionIntervalMilliSeconds", "${baseRetransmissionIntervalMilliSeconds}", "-maxRetransmissionIntervalMilliSeconds", "${maxRetransmissionIntervalMilliSeconds}"]
+ENTRYPOINT ["/bin/sh", "-c", "/bin/dmb -env ${env} -level ${level} -caller ${caller} -managerHost ${managerHost} -managerPort ${managerPort} -dmbHost ${dmbHost} -dmbPort ${dmbPort} -dmbTopic ${dmbTopic} -baseRetransmissionIntervalMilliSeconds ${baseRetransmissionIntervalMilliSeconds} -maxRetransmissionIntervalMilliSeconds ${maxRetransmissionIntervalMilliSeconds}"]

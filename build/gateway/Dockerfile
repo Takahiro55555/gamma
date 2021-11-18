@@ -18,4 +18,4 @@ ENV managerHost "localhost"
 ENV managerPort "1883"
 ENV gatewayHost "localhost"
 ENV gatewayPort "1884"
-ENTRYPOINT ["/bin/sh", "-c", "/bin/gateway","-env", "${env}", "-level", "${level}", "-caller", "${caller}", "-managerHost", "${managerHost}", "-managerPort", "${managerPort}", "-gatewayHost", "${gatewayHost}", "-gatewayPort", "${gatewayPort}"]
+ENTRYPOINT ["/bin/sh", "-c", "/bin/gateway -env ${env} -level ${level} -caller ${caller} -managerHost ${managerHost} -managerPort ${managerPort} -gatewayHost ${gatewayHost} -gatewayPort ${gatewayPort}"]

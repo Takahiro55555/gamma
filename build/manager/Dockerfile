@@ -15,4 +15,4 @@ ENV level "warn"
 ENV caller "false"
 ENV host "127.0.0.1"
 ENV port "1883"
-ENTRYPOINT ["/bin/sh", "-c", "/bin/manager", "-env", "${env}", "-level", "${level}", "-caller", "${caller}", "-host", "${host}", "-port", "${port}"]
+ENTRYPOINT ["/bin/sh", "-c", "/bin/manager -env ${env} -level ${level} -caller ${caller} -host ${host} -port ${port}"]
