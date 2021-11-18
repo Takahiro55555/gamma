@@ -63,20 +63,24 @@ jobs:
           IS_REBUILD_MANAGER_IMAGE='false'
           IS_REBUILD_GATEWAY_IMAGE='false'
           IS_REBUILD_DMB_IMAGE='false'
-          docker pull ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_MANAGER }}:${{ env.MANAGER_TAG }} || IS_REBUILD_MANAGER_IMAGE='true'
-          docker pull ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_GATEWAY }}:${{ env.GATEWAY_TAG }} || IS_REBUILD_GATEWAY_IMAGE='true'
-          docker pull ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_DMB }}:${{ env.DMB_TAG }} || IS_REBUILD_DMB_IMAGE='true'
+          IS_EXISTS_REBUILD_IMAGE='false'
+          docker pull ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_MANAGER }}:${{ env.MANAGER_TAG }} || (IS_REBUILD_MANAGER_IMAGE='true'; IS_EXISTS_REBUILD_IMAGE='true')
+          docker pull ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_GATEWAY }}:${{ env.GATEWAY_TAG }} || (IS_REBUILD_GATEWAY_IMAGE='true'; IS_EXISTS_REBUILD_IMAGE='true')
+          docker pull ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_DMB }}:${{ env.DMB_TAG }} || (IS_REBUILD_DMB_IMAGE='true'; IS_EXISTS_REBUILD_IMAGE='true')
           echo IS_REBUILD_MANAGER_IMAGE=$IS_REBUILD_MANAGER_IMAGE >> $GITHUB_ENV
           echo IS_REBUILD_GATEWAY_IMAGE=$IS_REBUILD_GATEWAY_IMAGE >> $GITHUB_ENV
           echo IS_REBUILD_DMB_IMAGE=$IS_REBUILD_DMB_IMAGE >> $GITHUB_ENV
+          echo IS_EXISTS_REBUILD_IMAGE=$IS_EXISTS_REBUILD_IMAGE >> $GITHUB_ENV
 
       # ARM向けのDockerImageを作成するための下準備 01
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
+        if: ${{ env.IS_EXISTS_REBUILD_IMAGE == 'true' }}
       
-      # ARM向けのDockerImageを作成するための下準備 01
+      # ARM向けのDockerImageを作成するための下準備 02
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
+        if: ${{ env.IS_EXISTS_REBUILD_IMAGE == 'true' }}
 
       # 指定されたタグの Docker image が無い場合、
       # 新たに Docker image をビルドし、GitHub Container Registry に Push する
