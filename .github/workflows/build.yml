@@ -64,9 +64,18 @@ jobs:
           IS_REBUILD_GATEWAY_IMAGE='false'
           IS_REBUILD_DMB_IMAGE='false'
           IS_EXISTS_REBUILD_IMAGE='false'
-          docker pull ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_MANAGER }}:${{ env.MANAGER_TAG }} || (IS_REBUILD_MANAGER_IMAGE='true'; IS_EXISTS_REBUILD_IMAGE='true')
-          docker pull ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_GATEWAY }}:${{ env.GATEWAY_TAG }} || (IS_REBUILD_GATEWAY_IMAGE='true'; IS_EXISTS_REBUILD_IMAGE='true')
-          docker pull ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_DMB }}:${{ env.DMB_TAG }} || (IS_REBUILD_DMB_IMAGE='true'; IS_EXISTS_REBUILD_IMAGE='true')
+          docker pull ghcr.io/takahiro55555/${{ env.DOCKER_IMAGE_MANAGER }}:${{ env.MANAGER_TAG }} || IS_REBUILD_MANAGER_IMAGE='true'
+          if [ "${IS_REBUILD_MANAGER_IMAGE}" == "true" ]; then
+            IS_EXISTS_REBUILD_IMAGE='true'
+          fi
+          docker pull ghcr.io/takahiro55555/${{ env.DOCKER_IMAGE_GATEWAY }}:${{ env.GATEWAY_TAG }} || IS_REBUILD_GATEWAY_IMAGE='true'
+          if [ "${IS_REBUILD_GATEWAY_IMAGE}" == "true" ]; then
+            IS_EXISTS_REBUILD_IMAGE='true'
+          fi
+          docker pull ghcr.io/takahiro55555/${{ env.DOCKER_IMAGE_DMB }}:${{ env.DMB_TAG }} || IS_REBUILD_DMB_IMAGE='true'
+          if [ "${IS_REBUILD_DMB_IMAGE}" == "true" ]; then
+            IS_EXISTS_REBUILD_IMAGE='true'
+          fi
           echo IS_REBUILD_MANAGER_IMAGE=$IS_REBUILD_MANAGER_IMAGE >> $GITHUB_ENV
           echo IS_REBUILD_GATEWAY_IMAGE=$IS_REBUILD_GATEWAY_IMAGE >> $GITHUB_ENV
           echo IS_REBUILD_DMB_IMAGE=$IS_REBUILD_DMB_IMAGE >> $GITHUB_ENV
