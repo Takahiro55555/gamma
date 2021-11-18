@@ -49,9 +49,9 @@ jobs:
       # https://docs.github.com/ja/rest/reference/repos#list-organization-repositories
       - name: Create Docker image tag
         run: |
-          MANAGER_TAG=`md5sum manager.out | cut -d ' ' -f 1`
-          GATEWAY_TAG=`md5sum gateway.out | cut -d ' ' -f 1`
-          DMB_TAG=`md5sum dmb.out | cut -d ' ' -f 1`
+          MANAGER_TAG=$(md5sum manager.out | cut -d ' ' -f 1).$(md5sum build/manager/Dockerfile | cut -d ' ' -f 1)
+          GATEWAY_TAG=$(md5sum gateway.out | cut -d ' ' -f 1).$(md5sum build/gateway/Dockerfile | cut -d ' ' -f 1)
+          DMB_TAG=$(md5sum dmb.out | cut -d ' ' -f 1).$(md5sum build/dmb/Dockerfile | cut -d ' ' -f 1)
           echo MANAGER_TAG=$MANAGER_TAG >> $GITHUB_ENV
           echo GATEWAY_TAG=$GATEWAY_TAG >> $GITHUB_ENV
           echo DMB_TAG=$DMB_TAG >> $GITHUB_ENV
