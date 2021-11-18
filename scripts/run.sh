@@ -4,7 +4,7 @@ MANAGER_GO_ENTRY_POINT=cmd/manager/main.go
 GATEWAY_GO_ENTRY_POINT=cmd/gateway/main.go
 
 DOCKER_COMPOSE=docker-compose
-TEST_DOCKER_COMPOSE_FILE=./build/docker-compose.yml
+TEST_DOCKER_COMPOSE_FILE=./scripts/local/docker-compose.yml
 TEST_DOCKER_COMPOSE_UP_D="${DOCKER_COMPOSE} -f ${TEST_DOCKER_COMPOSE_FILE} up -d"
 TEST_DOCKER_COMPOSE_DOWN="${DOCKER_COMPOSE} -f ${TEST_DOCKER_COMPOSE_FILE} down"
 
