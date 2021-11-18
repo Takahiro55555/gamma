@@ -1,0 +1,107 @@
+name: Build
+on: push
+
+env:
+  DOCKER_IMAGE_MANAGER: gamma-manager
+  DOCKER_IMAGE_GATEWAY: gamma-gateway
+  DOCKER_IMAGE_DMB: gamma-dmb
+  GO_VERSION: "1.17"
+
+jobs:
+  build-check:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Set up Go ${{ env.GO_VERSION }}
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v1
+
+      - name: Get dependencies
+        run: go get -v -t -d ./...
+
+      # gammaのビルド
+      - name: Build execution file
+        run: |
+          # manager
+          GOOS=linux GOARCH=amd64 go build -o "manager.out" cmd/manager/main.go
+
+          # gateway
+          GOOS=linux GOARCH=amd64 go build -o "gateway.out" cmd/gateway/main.go
+
+          # dmb
+          GOOS=linux GOARCH=amd64 go build -o "dmb.out" rm" cmd/dmb/main.go
+
+      # GHCRへログイン
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # x64バイナリのハッシュ値から Docker image のタグを生成する。
+      # https://docs.github.com/ja/rest/reference/repos#list-organization-repositories
+      - name: Create Docker image tag
+        run: |
+          MANAGER_TAG=`md5sum manager.out | cut -d ' ' -f 1`
+          GATEWAY_TAG=`md5sum gateway.out | cut -d ' ' -f 1`
+          DMB_TAG=`md5sum dmb.out | cut -d ' ' -f 1`
+          echo MANAGER_TAG=$MANAGER_TAG >> $GITHUB_ENV
+          echo GATEWAY_TAG=$GATEWAY_TAG >> $GITHUB_ENV
+          echo DMB_TAG=$DMB_TAG >> $GITHUB_ENV
+
+      # 上記で生成したタグが GitHub Container Registry に存在するかを確認する
+      # 存在しない場合、新たに Docker image をビルドするためのフラグ(IS_REBUILD_DOCKER_IMAGE)を立てる
+      - name: Check latest Docker image tag
+        run: |
+          IS_REBUILD_MANAGER_IMAGE='false'
+          IS_REBUILD_GATEWAY_IMAGE='false'
+          IS_REBUILD_DMB_IMAGE='false'
+          docker pull ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_MANAGER }}:${{ env.MANAGER_TAG }} || IS_REBUILD_MANAGER_IMAGE='true'
+          docker pull ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_GATEWAY }}:${{ env.GATEWAY_TAG }} || IS_REBUILD_GATEWAY_IMAGE='true'
+          docker pull ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_DMB }}:${{ env.DMB_TAG }} || IS_REBUILD_DMB_IMAGE='true'
+          echo IS_REBUILD_MANAGER_IMAGE=$IS_REBUILD_MANAGER_IMAGE >> $GITHUB_ENV
+          echo IS_REBUILD_GATEWAY_IMAGE=$IS_REBUILD_GATEWAY_IMAGE >> $GITHUB_ENV
+          echo IS_REBUILD_DMB_IMAGE=$IS_REBUILD_DMB_IMAGE >> $GITHUB_ENV
+
+      # 指定されたタグの Docker image が無い場合、
+      # 新たに Docker image をビルドし、GitHub Container Registry に Push する
+      # https://github.com/docker/build-push-action
+      - name: Build and push Manager Docker image
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        if: ${{ env.IS_REBUILD_MANAGER_IMAGE == 'true' }}
+        with:
+          context: .
+          file: build/manager/Dockerfile
+          platforms: linux/amd64,linux/arm64,linux/arm
+          push: true
+          tags: |
+            ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_MANAGER }}:${{ env.MANAGER_TAG }}
+            ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_MANAGER }}:latest
+
+      - name: Build and push Gateway Docker image
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        if: ${{ env.IS_REBUILD_GATEWAY_IMAGE == 'true' }}
+        with:
+          context: .
+          file: build/gateway/Dockerfile
+          platforms: linux/amd64,linux/arm64,linux/arm
+          push: true
+          tags: |
+            ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_GATEWAY }}:${{ env.GATEWAY_TAG }}
+            ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_GATEWAY }}:latest
+
+      - name: Build and push DMB Docker image
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        if: ${{ env.IS_REBUILD_DMB_IMAGE == 'true' }}
+        with:
+          context: .
+          file: build/dmb/Dockerfile
+          platforms: linux/amd64,linux/arm64,linux/arm
+          push: true
+          tags: |
+            ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_DMB }}:${{ env.DMB_TAG }}
+            ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_DMB }}:latest
