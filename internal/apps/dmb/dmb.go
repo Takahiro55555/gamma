@@ -68,9 +68,9 @@ func DMB(managerMB gateway.BrokerInfo, distributedMB gateway.BrokerInfo, distrib
 				}
 			}
 			continue
-		
+
 		// manager に自分が受け持つ分散MQTTブローカが正常に追加されていなかった場合、再度追加リクエストを送るためのチャンネル
-		case <- retransmissionTimer.C:
+		case <-retransmissionTimer.C:
 			log.Debug("Timer triggerd")
 
 			// 既に自分が担当する分散MQTTブローカの登録が完了している場合、処理を終える
@@ -81,13 +81,14 @@ func DMB(managerMB gateway.BrokerInfo, distributedMB gateway.BrokerInfo, distrib
 			// Managerへ分散MQTT接続情報の再通知
 			notifiNewDMBToManager(managerClient, distributedMB, distributedMBTopic)
 			retransmissionCounter++
-			
+
 			// 次に追加完了確認を行うまでの時間を決める乱数の範囲を、確認回数に応じて指数関数的に増やす
-			tmpMaxRetransmissionIntervalMilliSeconds := int(math.Pow(float64(baseRetransmissionIntervalMilliSeconds), float64(retransmissionCounter + 1)))
-			
+			tmpMaxRetransmissionIntervalMilliSeconds := int(math.Pow(float64(baseRetransmissionIntervalMilliSeconds), float64(retransmissionCounter+1)))
+
 			// 最大値を超えていないかを確認する
 			if tmpMaxRetransmissionIntervalMilliSeconds > maxRetransmissionIntervalMilliSeconds {
 				tmpMaxRetransmissionIntervalMilliSeconds = maxRetransmissionIntervalMilliSeconds
+				retransmissionCounter-- // tmpMaxRetransmissionIntervalMilliSeconds のオーバーフロー対策
 			}
 
 			waittimeMilliSecnds := rand.Intn(tmpMaxRetransmissionIntervalMilliSeconds)
@@ -104,7 +105,7 @@ func DMB(managerMB gateway.BrokerInfo, distributedMB gateway.BrokerInfo, distrib
 	}
 }
 
-func notifiNewDMBToManager(managerCliet mqtt.Client, dmbInfo gateway.BrokerInfo, dmbTopic string){
+func notifiNewDMBToManager(managerCliet mqtt.Client, dmbInfo gateway.BrokerInfo, dmbTopic string) {
 	// mosquitto_pub -h localhost -p 1883 -t "/api/tool/distributedbroker/add" -m '{"topic":"/","broker_info":{"host":"localhost","port":1893}}'
 	msg := fmt.Sprintf(`{"broker_info":{"host":"%v","port":%v},"topic":"%v"}`, dmbInfo.Host, dmbInfo.Port, dmbTopic)
 	if token := managerCliet.Publish("/api/tool/distributedbroker/add", 1, false, msg); token.Wait() && token.Error() != nil {
