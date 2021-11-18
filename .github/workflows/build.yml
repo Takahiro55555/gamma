@@ -82,8 +82,8 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm
           push: true
           tags: |
-            ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_MANAGER }}:${{ env.MANAGER_TAG }}
-            ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_MANAGER }}:latest
+            ghcr.io/takahiro55555/${{ env.DOCKER_IMAGE_MANAGER }}:${{ env.MANAGER_TAG }}
+            ghcr.io/takahiro55555/${{ env.DOCKER_IMAGE_MANAGER }}:latest
 
       - name: Build and push Gateway Docker image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
@@ -94,8 +94,8 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm
           push: true
           tags: |
-            ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_GATEWAY }}:${{ env.GATEWAY_TAG }}
-            ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_GATEWAY }}:latest
+            ghcr.io/takahiro55555/${{ env.DOCKER_IMAGE_GATEWAY }}:${{ env.GATEWAY_TAG }}
+            ghcr.io/takahiro55555/${{ env.DOCKER_IMAGE_GATEWAY }}:latest
 
       - name: Build and push DMB Docker image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
@@ -106,5 +106,5 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm
           push: true
           tags: |
-            ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_DMB }}:${{ env.DMB_TAG }}
-            ghcr.io/Takahiro55555/${{ env.DOCKER_IMAGE_DMB }}:latest
+            ghcr.io/takahiro55555/${{ env.DOCKER_IMAGE_DMB }}:${{ env.DMB_TAG }}
+            ghcr.io/takahiro55555/${{ env.DOCKER_IMAGE_DMB }}:latest
