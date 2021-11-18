@@ -13,7 +13,7 @@ services:
       # managerPort: "1883"
       dmbHost: "mqtt-broker"  # 同一の Docker network で動作するコンテナ名(ホスト名、Docker側が名前解決)
       dmbPort: "1883"
-      dmbTopic: "/"
+      # dmbTopic: "/"
       baseRetransmissionIntervalMilliSeconds: "10"
       maxRetransmissionIntervalMilliSeconds: "5000"
     logging:
