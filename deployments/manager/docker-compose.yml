@@ -1,0 +1,32 @@
+version: "3.3"
+services: 
+  gamma-manager:
+    image: ghcr.io/takahiro55555/gamma-manager:latest
+    container_name: "gamma-manager"
+    environment:
+      env: "development"
+      level: "debug"
+      caller: "false"
+      host: "mqtt-broker"  # 同一の Docker network で動作するコンテナ名(ホスト名、Docker側が名前解決)
+      port: "1883"
+    logging:
+      driver: json-file
+      options:
+        max-file: '7'
+        max-size: 1m
+
+  mqtt-broker:
+    image: eclipse-mosquitto:1.6
+    container_name: "mqtt-broker"
+    ports: 
+      - 1883:1883
+      - 9001:9001
+    logging:
+      driver: json-file
+      options:
+        max-file: '7'
+        max-size: 1m
+
+networks:
+  default:
+    driver: bridge
