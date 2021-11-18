@@ -13,6 +13,6 @@ RUN apk add --no-cache libc6-compat
 ENV env "production"
 ENV level "warn"
 ENV caller "false"
-ENV host "127.0.0.1"
+ENV host "localhost"
 ENV port "1883"
-ENTRYPOINT ["/bin/sh", "-c", "/bin/manager -env ${env} -level ${level} -caller ${caller} -host ${host} -port ${port}"]
+ENTRYPOINT ["/bin/sh", "-c", "/bin/manager -env=${env} -level=${level} -caller=${caller} -host=${host} -port=${port}"]
