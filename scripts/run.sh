@@ -21,7 +21,7 @@ dmb01Host=localhost
 dmb01Port=1894
 
 PID_FILE=".pid"
-level=debug
+level=trace
 env=production
 caller= 
 
@@ -82,7 +82,7 @@ elif [ "${1}" = "run" ]; then
 
     # manager と gateway を停止させるために、プロセスIDを保持する
     # NOTE: sleep を入れないと、プロセスIDをファイルに記録することが出来なかった
-    # sleep 2
+    sleep 2
     ps | grep main | grep -oE "^\s*[0-9]+" >> ${PID_FILE}
 
     # manager へ分散ブローカを設定する
@@ -92,9 +92,9 @@ elif [ "${1}" = "run" ]; then
 
     # manager へ gateway の担当エリアを設定する
     sleep 1
-    mosquitto_pub -h localhost -p 1883 -t "/api/tool/gatewaybroker/set" -m '{"topic":"/","broker_info":{"host":"localhost","port":1884}}'
+    mosquitto_pub -h localhost -p 1883 -t "/api/tool/gatewaybroker/set" -m '{"topics":["/"],"broker_info":{"host":"localhost","port":1884}}'
     sleep 1
-    mosquitto_pub -h localhost -p 1883 -t "/api/tool/gatewaybroker/set" -m '{"topic":"/0","broker_info":{"host":"localhost","port":1884}}'
+    mosquitto_pub -h localhost -p 1883 -t "/api/tool/gatewaybroker/set" -m '{"topics":["/0"],"broker_info":{"host":"localhost","port":1884}}'
 fi
 
 # dmb -> manager への通信確認コマンド
