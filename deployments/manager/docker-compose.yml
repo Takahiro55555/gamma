@@ -3,6 +3,8 @@ services:
   gamma-manager:
     image: ghcr.io/takahiro55555/gamma-manager:latest
     container_name: "gamma-manager"
+    depends_on:
+      - mqtt-broker
     environment:
       env: "development"
       level: "debug"

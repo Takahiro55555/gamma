@@ -3,6 +3,8 @@ services:
   gamma-gateway:
     image: ghcr.io/takahiro55555/gamma-gateway:latest
     container_name: "gamma-gateway"
+    depends_on:
+      - mqtt-broker
     env_file:
       - .env
     environment:

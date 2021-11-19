@@ -3,6 +3,8 @@ services:
   gamma-dmb:
     image: ghcr.io/takahiro55555/gamma-dmb:latest
     container_name: "gamma-dmb"
+    depends_on:
+      - mqtt-broker
     env_file:
       - .env
     environment:
