@@ -58,6 +58,8 @@ jobs:
 
       # 上記で生成したタグが GitHub Container Registry に存在するかを確認する
       # 存在しない場合、新たに Docker image をビルドするためのフラグ(IS_REBUILD_DOCKER_IMAGE)を立てる
+      # FIXME: ソースコードを過去のバージョンに戻した場合を考慮していない
+      #        具体的には、latest タグの更新が行われないという問題がある
       - name: Check latest Docker image tag
         run: |
           IS_REBUILD_MANAGER_IMAGE='false'
